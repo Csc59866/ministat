@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "queue.h"
 
@@ -127,7 +128,30 @@ double student [NSTUDENT + 1][NCONF] = {
 };
 
 #define	MAX_DS	8
+#define MAX_TS  2
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
+static unsigned long long ts[2] = {0,0};
+struct timespec start, stop;
+
+static unsigned long long
+elapsed_us(struct timespec *a, struct timespec *b)
+{
+	unsigned long long a_p = (a->tv_sec * 1000000ULL) + a->tv_nsec / 1000;
+	unsigned long long b_p = (b->tv_sec * 1000000ULL) + b->tv_nsec / 1000;
+	return b_p - a_p;
+}
+
+static void
+TimePrint(void)
+{
+	unsigned i;
+	printf("Timing Performance     AddPoint 	ReadSet		... 	\n");
+	printf("This Week:                   ");
+	for(i=0; i<MAX_TS; i++){
+		printf("%llu           ", ts[i]);
+	}
+	printf("\n");
+}
 
 struct dataset {
 	char *name;
@@ -151,6 +175,7 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	if (ds->n >= ds->lpoints) {
 		ds->lpoints *= 4;
 		ds->points = realloc(ds->points, sizeof(ds->points) * ds->lpoints);
@@ -158,6 +183,8 @@ AddPoint(struct dataset *ds, double a)
 	ds->points[ds->n++] = a;
 	ds->sy += a;
 	ds->syy += a * a;
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------// 
+	ts[0] = elapsed_us(&start, &stop);
 }
 
 static double
@@ -443,6 +470,7 @@ dbl_cmp(const void *a, const void *b)
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	int f;
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	struct dataset *s;
@@ -516,6 +544,8 @@ ReadSet(const char *n, int column, const char *delim)
 		exit (2);
 	}
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------// 
+	ts[1] = elapsed_us(&start, &stop);
 	return (s);
 }
 
@@ -556,6 +586,7 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -569,7 +600,7 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snqw:v")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -609,6 +640,9 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
+		case 'v':
+            flag_v = 1;
+            break;
 		default:
 			usage("Unknown option");
 			break;
@@ -646,6 +680,9 @@ main(int argc, char **argv)
 		Vitals(ds[i], i + 1);
 		if (!flag_n)
 			Relative(ds[i], ds[0], ci);
+	}
+	if(flag_v) {
+		TimePrint();
 	}
 	exit(0);
 }
