@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 
 #include <err.h>
+#include <fcntl.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -442,49 +443,73 @@ dbl_cmp(const void *a, const void *b)
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
-	FILE *f;
-	char buf[BUFSIZ], *p, *t;
+	int f;
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	struct dataset *s;
 	double d;
 	int line;
 	int i;
+	int bytes_read;
+	size_t offset = 0;
 
 	if (n == NULL) {
-		f = stdin;
+		f = STDIN_FILENO;
 		n = "<stdin>";
 	} else if (!strcmp(n, "-")) {
-		f = stdin;
+		f = STDIN_FILENO;
 		n = "<stdin>";
 	} else {
-		f = fopen(n, "r");
+		f = open(n, O_RDONLY);
 	}
-	if (f == NULL)
+	if (f == -1)
 		err(1, "Cannot open %s", n);
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
-	while (fgets(buf, sizeof buf, f) != NULL) {
-		line++;
+	for (;;) {
+		bytes_read = read(f, buf, sizeof buf - 1);
 
-		i = strlen(buf);
-		if (buf[i-1] == '\n')
-			buf[i-1] = '\0';
-		for (i = 1, t = strtok(buf, delim);
-		     t != NULL && *t != '#';
-		     i++, t = strtok(NULL, delim)) {
-			if (i == column)
-				break;
+		if (bytes_read <= 0) {
+			break;
 		}
-		if (t == NULL || *t == '#')
-			continue;
 
-		d = strtod(t, &p);
-		if (p != NULL && *p != '\0')
-			err(2, "Invalid data on line %d in %s\n", line, n);
-		if (*buf != '\0')
-			AddPoint(s, d);
+		buf[bytes_read] = '\0';
+		char *c = buf;
+		char *str_start = c;
+
+		for (; *c != '\0'; ++c) {
+			if (*c == '\n') {
+				line++;
+				*c = '\0';
+				strcpy(str + offset, str_start);
+				offset = 0;
+				i = strlen(str);
+
+				for (i = 1, t = strtok(str, delim);
+					t != NULL && *t != '#';
+					i++, t = strtok(NULL, delim)) {
+					if (i == column)
+						break;
+				}
+				if (t == NULL || *t == '#')
+					continue;
+
+				d = strtod(t, &p);
+				if (p != NULL && *p != '\0')
+					err(2, "Invalid data on line %d in %s\n", line, n);
+				if (*str != '\0')
+					AddPoint(s, d);
+
+				str_start = c + 1;
+			}
+		}
+
+		if (buf[bytes_read - 1] != '\0') {
+			strcpy(str, str_start);
+			offset = strlen(str);
+		}
 	}
-	fclose(f);
+	close(f);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
