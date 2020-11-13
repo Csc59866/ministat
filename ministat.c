@@ -130,7 +130,7 @@ double student [NSTUDENT + 1][NCONF] = {
 #define	MAX_DS	8
 #define MAX_TS  2
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
-static unsigned long long ts[2];
+static unsigned long long ts[2] = {0,0};
 struct timespec start, stop;
 
 static unsigned long long
@@ -175,6 +175,7 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	if (ds->n >= ds->lpoints) {
 		ds->lpoints *= 4;
 		ds->points = realloc(ds->points, sizeof(ds->points) * ds->lpoints);
@@ -182,6 +183,8 @@ AddPoint(struct dataset *ds, double a)
 	ds->points[ds->n++] = a;
 	ds->sy += a;
 	ds->syy += a * a;
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------// 
+	ts[0] = elapsed_us(&start, &stop);
 }
 
 static double
@@ -467,6 +470,7 @@ dbl_cmp(const void *a, const void *b)
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	int f;
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	struct dataset *s;
@@ -540,6 +544,8 @@ ReadSet(const char *n, int column, const char *delim)
 		exit (2);
 	}
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------// 
+	ts[1] = elapsed_us(&start, &stop);
 	return (s);
 }
 
@@ -674,6 +680,9 @@ main(int argc, char **argv)
 		Vitals(ds[i], i + 1);
 		if (!flag_n)
 			Relative(ds[i], ds[0], ci);
+	}
+	if(flag_v) {
+		TimePrint();
 	}
 	exit(0);
 }
