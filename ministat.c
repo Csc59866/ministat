@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "queue.h"
 
@@ -127,7 +128,30 @@ double student [NSTUDENT + 1][NCONF] = {
 };
 
 #define	MAX_DS	8
+#define MAX_TS  2
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
+static unsigned long long ts[2];
+struct timespec start, stop;
+
+static unsigned long long
+elapsed_us(struct timespec *a, struct timespec *b)
+{
+	unsigned long long a_p = (a->tv_sec * 1000000ULL) + a->tv_nsec / 1000;
+	unsigned long long b_p = (b->tv_sec * 1000000ULL) + b->tv_nsec / 1000;
+	return b_p - a_p;
+}
+
+static void
+TimePrint(void)
+{
+	unsigned i;
+	printf("Timing Performance     AddPoint 	ReadSet		... 	\n");
+	printf("This Week:                   ");
+	for(i=0; i<MAX_TS; i++){
+		printf("%llu           ", ts[i]);
+	}
+	printf("\n");
+}
 
 struct dataset {
 	char *name;
@@ -556,6 +580,7 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -569,7 +594,7 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snqw:v")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -609,6 +634,9 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
+		case 'v':
+            flag_v = 1;
+            break;
 		default:
 			usage("Unknown option");
 			break;
