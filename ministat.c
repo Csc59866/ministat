@@ -150,14 +150,9 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
-	double *dp;
-
 	if (ds->n >= ds->lpoints) {
-		dp = ds->points;
 		ds->lpoints *= 4;
-		ds->points = calloc(sizeof *ds->points, ds->lpoints);
-		memcpy(ds->points, dp, sizeof *dp * ds->n);
-		free(dp);
+		ds->points = realloc(ds->points, sizeof(ds->points) * ds->lpoints);
 	}
 	ds->points[ds->n++] = a;
 	ds->sy += a;
@@ -241,7 +236,7 @@ Relative(struct dataset *ds, struct dataset *rs, int confidx)
 	e = t * s;
 
 	if (fabs(d) > e) {
-	
+
 		printf("Difference at %.1f%% confidence\n", studentpct[confidx]);
 		printf("	%g +/- %g\n", d, e);
 		printf("	%g%% +/- %g%%\n", d * 100 / Avg(rs), e * 100 / Avg(rs));
@@ -333,7 +328,7 @@ PlotSet(struct dataset *ds, int val)
 		pl->bar[bar] = malloc(pl->width);
 		memset(pl->bar[bar], 0, pl->width);
 	}
-	
+
 	m = 1;
 	i = -1;
 	j = 0;
@@ -609,7 +604,7 @@ main(int argc, char **argv)
 			ds[i] = ReadSet(argv[i], column, delim);
 	}
 
-	for (i = 0; i < nds; i++) 
+	for (i = 0; i < nds; i++)
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
 
 	if (!flag_n && !flag_q) {
