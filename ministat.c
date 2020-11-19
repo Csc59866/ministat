@@ -21,6 +21,8 @@
 
 #include "queue.h"
 
+#define ARRAYLIST_SIZE 100000
+
 #define NSTUDENT 100
 #define NCONF 6
 double const studentpct[] = { 80, 90, 95, 98, 99, 99.5 };
@@ -154,10 +156,24 @@ TimePrint(void)
 	printf("\n");
 }
 
+struct arraylist {
+	double *points;
+	unsigned n;
+	struct arraylist *next;
+};
+
+struct arraylist *
+NewArrayList(void)
+{
+	struct arraylist *al = calloc(1, sizeof *al);
+	al->points = calloc(ARRAYLIST_SIZE, sizeof *al->points);
+	return al;
+}
+
 struct dataset {
 	char *name;
-	double	*points;
-	unsigned lpoints;
+	struct arraylist *head, *tail;
+	double *points;
 	double sy, syy;
 	unsigned n;
 };
@@ -168,8 +184,7 @@ NewSet(void)
 	struct dataset *ds;
 
 	ds = calloc(1, sizeof *ds);
-	ds->lpoints = 100000;
-	ds->points = calloc(sizeof *ds->points, ds->lpoints);
+	ds->tail = ds->head = NewArrayList();
 	return(ds);
 }
 
@@ -177,14 +192,15 @@ static void
 AddPoint(struct dataset *ds, double a)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
-	if (ds->n >= ds->lpoints) {
-		ds->lpoints *= 4;
-		ds->points = realloc(ds->points, sizeof(ds->points) * ds->lpoints);
+	if (ds->tail->n >= ARRAYLIST_SIZE) {
+		ds->tail->next = NewArrayList();
+		ds->tail = ds->tail->next;
 	}
-	ds->points[ds->n++] = a;
+	ds->tail->points[ds->tail->n++] = a;
 	ds->sy += a;
 	ds->syy += a * a;
-	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------// 
+	ds->n += 1;
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[0] = elapsed_us(&start, &stop);
 }
 
@@ -199,7 +215,7 @@ static double
 Max(struct dataset *ds)
 {
 
-	return (ds->points[ds->n -1]);
+	return (ds->points[ds->n - 1]);
 }
 
 static double
@@ -544,8 +560,17 @@ ReadSet(const char *n, int column, const char *delim)
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
+
+	s->points = malloc(s->n * sizeof *s->points);
+	double *sp = s->points;
+
+	for (struct arraylist *al = s->head; al != NULL; al = al->next) {
+		memcpy(sp, al->points, al->n * sizeof *sp);
+		sp += al->n;
+	}
+
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------// 
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[1] = elapsed_us(&start, &stop);
 	return (s);
 }
