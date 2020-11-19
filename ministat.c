@@ -8,6 +8,7 @@
  *
  */
 #include <sys/ioctl.h>
+
 #include "dtoa/strtod-lite.c"
 #include <err.h>
 #include <fcntl.h>
