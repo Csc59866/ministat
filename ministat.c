@@ -489,7 +489,7 @@ ReadSet(const char *n, int column, const char *delim)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	int f;
-	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t, *str_0;
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	struct dataset *s;
 	double d;
 	int line;
@@ -529,19 +529,22 @@ ReadSet(const char *n, int column, const char *delim)
 				strcpy(str + offset, str_start);
 				offset = 0;
 				str_start = c + 1;
-				str_0 = str;
 
-				for (i = 1, t = strsep(&str_0, delim);
-					t != NULL && *t != '#';
-					i++, t = strsep(&str_0, delim)) {
+				for (i = 1, t = p = str;
+					*t != '#';
+					i++) {
+					t = p;
+					p += strcspn(p, delim);
+					if (*p != '\0')
+						p++;
 					if (i == column)
 						break;
 				}
-				if (t == NULL || *t == '#')
+				if (t == p || *t == '#')
 					continue;
 
 				d = strtod_fast(t, &p);
-				if (p != NULL && *p != '\0')
+				if (strcspn(p, delim))
 					err(2, "Invalid data on line %d in %s\n", line, n);
 				if (*str != '\0')
 					AddPoint(s, d);
