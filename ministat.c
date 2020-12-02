@@ -173,38 +173,68 @@ NewArrayList(void)
 	return al;
 }
 
+struct miniset {
+	struct arraylist *head, *tail;
+	double sy, syy;
+	unsigned n;
+	struct miniset *next;
+};
+
+struct miniset *
+NewMiniSet(void)
+{
+	struct miniset *ms;
+
+	ms = calloc(1, sizeof *ms);
+	ms->tail = ms->head = NewArrayList();
+	return(ms);
+}
+
+static void
+AddPoint(struct miniset *ms, double a)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	if (ms->tail->n >= ARRAYLIST_SIZE) {
+		ms->tail = ms->tail->next = NewArrayList();
+	}
+	ms->tail->points[ms->tail->n++] = a;
+	ms->sy += a;
+	ms->syy += a * a;
+	ms->n += 1;
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
+	ts[0] = elapsed_us(&start, &stop);
+}
+
 struct dataset {
 	char *name;
-	struct arraylist *head, *tail;
+	struct miniset *head, *tail;
 	double *points;
 	double sy, syy;
 	unsigned n;
 };
 
+static void
+AddMiniSet(struct dataset *ds, struct miniset *ms)
+{
+	ds->sy += ms->sy;
+	ds->syy += ms->syy;
+	ds->n += ms->n;
+
+	if (ds->head) {
+		ds->tail = ds->tail->next = ms;
+	}
+	else {
+		ds->tail = ds->head = ms;
+	}
+}
+
 static struct dataset *
-NewSet(void)
+NewDataSet(void)
 {
 	struct dataset *ds;
 
 	ds = calloc(1, sizeof *ds);
-	ds->tail = ds->head = NewArrayList();
 	return(ds);
-}
-
-static void
-AddPoint(struct dataset *ds, double a)
-{
-	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
-	if (ds->tail->n >= ARRAYLIST_SIZE) {
-		ds->tail->next = NewArrayList();
-		ds->tail = ds->tail->next;
-	}
-	ds->tail->points[ds->tail->n++] = a;
-	ds->sy += a;
-	ds->syy += a * a;
-	ds->n += 1;
-	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
-	ts[0] = elapsed_us(&start, &stop);
 }
 
 static double
@@ -502,6 +532,7 @@ static void *
 ReadSetThread(void *readset_context)
 {
 	struct readset_context *context = readset_context;
+	struct miniset *ms = NewMiniSet();
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	double d;
 	int line = 0;
@@ -549,11 +580,8 @@ ReadSetThread(void *readset_context)
 				d = strtod_fast(t, &p);
 				if (strcspn(p, context->delim))
 					err(2, "Invalid data on line %d in %s\n", line, context->n);
-				if (*str != '\0') {
-					pthread_mutex_lock(&mutex);
-					AddPoint(context->s, d);
-					pthread_mutex_unlock(&mutex);
-				}
+				if (*str != '\0')
+					AddPoint(ms, d);
 			}
 		}
 
@@ -562,6 +590,10 @@ ReadSetThread(void *readset_context)
 			offset = strlen(str);
 		}
 	}
+
+	pthread_mutex_lock(&mutex);
+	AddMiniSet(context->s, ms);
+	pthread_mutex_unlock(&mutex);
 
 	return NULL;
 }
@@ -572,7 +604,7 @@ ReadSet(const char *n, int column, const char *delim)
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	int f, i;
 	struct dataset *s;
-	s = NewSet();
+	s = NewDataSet();
 	s->name = strdup(n);
 
 	if (n == NULL) {
@@ -652,9 +684,11 @@ ReadSet(const char *n, int column, const char *delim)
 	s->points = malloc(s->n * sizeof *s->points);
 	double *sp = s->points;
 
-	for (struct arraylist *al = s->head; al != NULL; al = al->next) {
-		memcpy(sp, al->points, al->n * sizeof *sp);
-		sp += al->n;
+	for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
+		for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
+			memcpy(sp, al->points, al->n * sizeof *sp);
+			sp += al->n;
+		}
 	}
 
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
