@@ -13,15 +13,18 @@
 #include <err.h>
 #include <fcntl.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "queue.h"
 
 #define ARRAYLIST_SIZE 100000
+#define READSET_THREAD_COUNT 4
 
 #define NSTUDENT 100
 #define NCONF 6
@@ -484,40 +487,40 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
-{
-	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
-	int f;
-	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+struct readset_context {
+	int fd; /* file descriptor */
+	const char *n; /* filename */
+	int column;
+	const char *delim;
+	size_t start, end;
 	struct dataset *s;
+};
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *
+ReadSetThread(void *readset_context)
+{
+	struct readset_context *context = readset_context;
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	double d;
-	int line;
+	int line = 0;
 	int i;
 	int bytes_read;
+	off_t cursor = context->start;
 	size_t offset = 0;
+	size_t ctx_size, buflen;
 
-	if (n == NULL) {
-		f = STDIN_FILENO;
-		n = "<stdin>";
-	} else if (!strcmp(n, "-")) {
-		f = STDIN_FILENO;
-		n = "<stdin>";
-	} else {
-		f = open(n, O_RDONLY);
-	}
-	if (f == -1)
-		err(1, "Cannot open %s", n);
-	s = NewSet();
-	s->name = strdup(n);
-	line = 0;
 	for (;;) {
-		bytes_read = read(f, buf, sizeof buf - 1);
+		ctx_size = context->end - cursor + 1;
+		buflen = BUFSIZ <= ctx_size ? BUFSIZ : ctx_size;
+		bytes_read = pread(context->fd, buf, buflen - 1, cursor);
 
 		if (bytes_read <= 0) {
 			break;
 		}
 
+		cursor += bytes_read;
 		buf[bytes_read] = '\0';
 		char *c = buf;
 		char *str_start = c;
@@ -534,20 +537,23 @@ ReadSet(const char *n, int column, const char *delim)
 					*t != '#';
 					i++) {
 					t = p;
-					p += strcspn(p, delim);
+					p += strcspn(p, context->delim);
 					if (*p != '\0')
 						p++;
-					if (i == column)
+					if (i == context->column)
 						break;
 				}
 				if (t == p || *t == '#')
 					continue;
 
 				d = strtod_fast(t, &p);
-				if (strcspn(p, delim))
-					err(2, "Invalid data on line %d in %s\n", line, n);
-				if (*str != '\0')
-					AddPoint(s, d);
+				if (strcspn(p, context->delim))
+					err(2, "Invalid data on line %d in %s\n", line, context->n);
+				if (*str != '\0') {
+					pthread_mutex_lock(&mutex);
+					AddPoint(context->s, d);
+					pthread_mutex_unlock(&mutex);
+				}
 			}
 		}
 
@@ -556,7 +562,87 @@ ReadSet(const char *n, int column, const char *delim)
 			offset = strlen(str);
 		}
 	}
+
+	return NULL;
+}
+
+static struct dataset *
+ReadSet(const char *n, int column, const char *delim)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	int f, i;
+	struct dataset *s;
+	s = NewSet();
+	s->name = strdup(n);
+
+	if (n == NULL) {
+		f = STDIN_FILENO;
+		n = "<stdin>";
+	} else if (!strcmp(n, "-")) {
+		f = STDIN_FILENO;
+		n = "<stdin>";
+	} else {
+		f = open(n, O_RDONLY);
+	}
+	if (f == -1)
+		err(1, "Cannot open %s", n);
+
+	struct stat stat;
+	size_t share, share_actual, leftover, ctx_start, ctx_end;
+
+	fstat(f, &stat);
+	share = stat.st_size / READSET_THREAD_COUNT;
+	leftover = stat.st_size % READSET_THREAD_COUNT;
+	ctx_start = 0;
+	ctx_end = share;
+
+	pthread_t threads[READSET_THREAD_COUNT];
+	pthread_t *t = threads;
+	size_t thread_count = 0;
+	char candidate;
+
+	for (i = 0; i < READSET_THREAD_COUNT; ++i) {
+		share_actual = share;
+
+		if (i == 0 && leftover) {
+			share_actual -= leftover;
+			ctx_end += leftover;
+			leftover = 0;
+		}
+
+		while (pread(f, &candidate, 1, ctx_end - 1)) {
+			if (candidate == '\n') {
+				break;
+			}
+
+			share_actual--;
+			ctx_end++;
+		}
+
+		struct readset_context *context = malloc(sizeof *context);
+		context->fd = f;
+		context->n = n;
+		context->column = column;
+		context->delim = delim;
+		context->start = ctx_start;
+		context->end = ctx_end;
+		context->s = s;
+
+		pthread_create(t++, NULL, ReadSetThread, context);
+		thread_count++;
+
+		ctx_start = ctx_end;
+		ctx_end += share_actual;
+	}
+
+	for (i = 0, t = threads; i < thread_count; ++i) {
+		if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Failed to join a ReadSetThread");
+		}
+	}
+
 	close(f);
+
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
