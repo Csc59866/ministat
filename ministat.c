@@ -158,17 +158,6 @@ TimePrint(void)
 	printf("\n");
 }
 
-struct readset_file {
-    char *name;
-    int column;
-    char *delim;
-};
-
-static void *thread_function(struct readset_file *file){
-    ReadSet(file->name, file->column, file->delim);
-    return NULL;
-}
-
 struct arraylist {
 	double *points;
 	unsigned n;
@@ -654,7 +643,7 @@ main(int argc, char **argv)
 	pthread_t *threads;
 	pthread_mutex_init(&mutex, NULL);
 	struct readset_file *file = calloc(1, sizeof(* file));
-	
+
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
 
@@ -737,14 +726,22 @@ main(int argc, char **argv)
 		file->dataset = ds;
 		for (i = 0; i < nds; i++){
 			file->name = argv[i];
-			pthread_create(threads[i], NULL, ReadSet, (void *)file);
+			if (pthread_create(&threads[i], NULL, thread_function, (void *)file) != 0) {
+				perror("error: failed to create a thread");
+            	exit(EXIT_FAILURE);
+			}
 		}
+
+		for (int i = 0; i < nds; i++) { //validate join threads
+			if (pthread_join(threads[i], NULL) != 0)
+				perror("warning: failed to join a thread");
+   		}
 
 		free(threads);
 		free(file);
 		//==================================MULTITHREAD===============================================//
 	}
-
+	
 	for (i = 0; i < nds; i++)
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
 
