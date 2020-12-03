@@ -158,6 +158,17 @@ TimePrint(void)
 	printf("\n");
 }
 
+struct readset_file {
+    char *name;
+    int column;
+    char *delim;
+};
+
+static void *thread_function(struct readset_file *file){
+    ReadSet(file->name, file->column, file->delim);
+    return NULL;
+}
+
 struct arraylist {
 	double *points;
 	unsigned n;
