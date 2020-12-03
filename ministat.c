@@ -528,6 +528,7 @@ struct readset_context {
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+
 static void *
 ReadSetThread(void *readset_context)
 {
@@ -598,7 +599,14 @@ ReadSetThread(void *readset_context)
 	return NULL;
 }
 
-static struct dataset *
+struct readset_file {
+	char *name;
+	int column;
+	char *delim;
+};
+
+
+static void *
 ReadSet(const char *n, int column, const char *delim)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
@@ -694,7 +702,7 @@ ReadSet(const char *n, int column, const char *delim)
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[1] = elapsed_us(&start, &stop);
-	return (s);
+	return (void *)s;
 }
 
 static void
@@ -832,5 +840,30 @@ main(int argc, char **argv)
 	if(flag_v) {
 		TimePrint();
 	}
+
+        //Multi-threading
+        pthread_t threads[nds];
+	pthread_t *t = threads;
+
+	for (int i = 0; i < nds; i++)
+	{
+		struct readset_file *file = calloc(1, sizeof(*file));
+ 
+		file -> name = p;
+		file -> column = column;
+		file -> delim = delim;
+
+		pthread_create(t++, NULL, ReadSet, file);
+	}
+
+	for (int i = 0; i < nds; i++)
+	{
+		if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Error joining threads");
+		}
+	}
+
+   	pthread_exit(NULL);
+
 	exit(0);
 }
