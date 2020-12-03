@@ -585,7 +585,7 @@ ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 struct readset_file {
     char *name;
     int column;
-    char *delim;
+    const char *delim;
 	struct dataset *dataset;
 };
 
@@ -708,7 +708,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim, ds);
+		ds[0] = ReadSet("-", column, delim, *ds);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
@@ -722,7 +722,7 @@ main(int argc, char **argv)
     	}
 
 		file->column = column;
-		file->delim = (const char *) delim;
+		file->delim = delim;
 		file->dataset = ds;
 		for (i = 0; i < nds; i++){
 			file->name = argv[i];
