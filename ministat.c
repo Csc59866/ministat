@@ -137,6 +137,7 @@ static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 static unsigned long long ts[2] = {0,0};
 struct timespec start, stop;
 static pthread_mutex_t mutex;
+static unsigned long global_count = 0;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -575,10 +576,12 @@ ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
-	ts[1] = elapsed_us(&start, &stop);
-	//mutex
-	data=s;
-	//mutex 
+	//entering CS
+	pthread_mutex_lock(&mutex);
+	ts[1] = elapsed_us(&start, &stop); //time for the last thread to reach CS
+	data[global_count] = *s;
+	global_count++;
+	pthread_mutex_unlock(&mutex); 
 }
 
 struct readset_file {
