@@ -698,8 +698,20 @@ main(int argc, char **argv)
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim);
+		//================================================//
+		threads = malloc(sizeof(pthread_t) * (nds)); 
+		if (threads == NULL) {
+			perror("error: failed to allocate threads");
+			exit(EXIT_FAILURE);
+    	}
+		file->column = column;
+		file->delim = delim;
+		for (i = 0; i < nds; i++){
+			file->name = argv[i];
+			pthread_create(threads[i], NULL, ReadSet, (void *)file);
+		}
+
+		free(threads);
 	}
 
 	for (i = 0; i < nds; i++)
