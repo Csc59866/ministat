@@ -518,10 +518,16 @@ dbl_cmp(const void *a, const void *b)
 }
 
 struct readset_context {
+	struct dataset **multiset;
+	int index;
 	int fd; /* file descriptor */
 	const char *n; /* filename */
 	int column;
 	const char *delim;
+};
+
+struct readsetworker_context {
+	struct readset_context *file;
 	size_t start, end;
 	struct dataset *s;
 };
@@ -529,9 +535,9 @@ struct readset_context {
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *
-ReadSetThread(void *readset_context)
+ReadSetWorker(void *readsetworker_context)
 {
-	struct readset_context *context = readset_context;
+	struct readsetworker_context *context = readsetworker_context;
 	struct miniset *ms = NewMiniSet();
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	double d;
@@ -545,7 +551,7 @@ ReadSetThread(void *readset_context)
 	for (;;) {
 		ctx_size = context->end - cursor + 1;
 		buflen = BUFSIZ <= ctx_size ? BUFSIZ : ctx_size;
-		bytes_read = pread(context->fd, buf, buflen - 1, cursor);
+		bytes_read = pread(context->file->fd, buf, buflen - 1, cursor);
 
 		if (bytes_read <= 0) {
 			break;
@@ -568,18 +574,19 @@ ReadSetThread(void *readset_context)
 					*t != '#';
 					i++) {
 					t = p;
-					p += strcspn(p, context->delim);
+					p += strcspn(p, context->file->delim);
 					if (*p != '\0')
 						p++;
-					if (i == context->column)
+					if (i == context->file->column)
 						break;
 				}
 				if (t == p || *t == '#')
 					continue;
 
 				d = strtod_fast(t, &p);
-				if (strcspn(p, context->delim))
-					err(2, "Invalid data on line %d in %s\n", line, context->n);
+				if (strcspn(p, context->file->delim))
+					err(2, "Invalid data on line %d in %s\n", line,
+						context->file->n);
 				if (*str != '\0')
 					AddPoint(ms, d);
 			}
@@ -598,26 +605,29 @@ ReadSetThread(void *readset_context)
 	return NULL;
 }
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
+static void *
+ReadSet(void *readset_context)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	struct readset_context *context = readset_context;
 	int f, i;
 	struct dataset *s;
 	s = NewDataSet();
-	s->name = strdup(n);
+	s->name = strdup(context->n);
 
-	if (n == NULL) {
+	if (context->n == NULL) {
 		f = STDIN_FILENO;
-		n = "<stdin>";
-	} else if (!strcmp(n, "-")) {
+		context->n = "<stdin>";
+	} else if (!strcmp(context->n, "-")) {
 		f = STDIN_FILENO;
-		n = "<stdin>";
+		context->n = "<stdin>";
 	} else {
-		f = open(n, O_RDONLY);
+		f = open(context->n, O_RDONLY);
 	}
 	if (f == -1)
-		err(1, "Cannot open %s", n);
+		err(1, "Cannot open %s", context->n);
+
+	context->fd = f;
 
 	struct stat stat;
 	size_t share, share_actual, leftover, ctx_start, ctx_end;
@@ -651,16 +661,18 @@ ReadSet(const char *n, int column, const char *delim)
 			ctx_end++;
 		}
 
-		struct readset_context *context = malloc(sizeof *context);
-		context->fd = f;
-		context->n = n;
-		context->column = column;
-		context->delim = delim;
-		context->start = ctx_start;
-		context->end = ctx_end;
-		context->s = s;
+		struct readsetworker_context *worker_context = malloc(
+			sizeof *worker_context
+		);
+		worker_context->file = context;
+		worker_context->start = ctx_start;
+		worker_context->end = ctx_end;
+		worker_context->s = s;
 
-		pthread_create(t++, NULL, ReadSetThread, context);
+		if (pthread_create(t++, NULL, ReadSetWorker, worker_context) != 0) {
+			err(1, "Failed to create a ReadSetWorker thread");
+		}
+
 		thread_count++;
 
 		ctx_start = ctx_end;
@@ -669,7 +681,7 @@ ReadSet(const char *n, int column, const char *delim)
 
 	for (i = 0, t = threads; i < thread_count; ++i) {
 		if (pthread_join(*t++, NULL) != 0) {
-			err(1, "Failed to join a ReadSetThread");
+			err(1, "Failed to join a ReadSetWorker thread");
 		}
 	}
 
@@ -677,7 +689,7 @@ ReadSet(const char *n, int column, const char *delim)
 
 	if (s->n < 3) {
 		fprintf(stderr,
-		    "Dataset %s must contain at least 3 data points\n", n);
+		    "Dataset %s must contain at least 3 data points\n", context->n);
 		exit (2);
 	}
 
@@ -692,6 +704,9 @@ ReadSet(const char *n, int column, const char *delim)
 	}
 
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+
+	context->multiset[context->index] = s;
+
 	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[1] = elapsed_us(&start, &stop);
 	return (s);
@@ -801,14 +816,43 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim);
 		nds = 1;
+
+		struct readset_context context;
+		context.multiset = ds;
+		context.index = 0;
+		context.n = "-";
+		context.column = column;
+		context.delim = delim;
+
+		ReadSet((void *)&context);
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
+
 		nds = argc;
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim);
+
+		pthread_t threads[nds];
+		pthread_t *t = threads;
+
+		for (i = 0; i < nds; i++) {
+			struct readset_context *context = malloc(sizeof *context);
+			context->multiset = ds;
+			context->index = i;
+			context->n = argv[i];
+			context->column = column;
+			context->delim = delim;
+
+			if (pthread_create(t++, NULL, ReadSet, context) != 0) {
+				err(1, "Failed to create a ReadSet thread");
+			}
+		}
+
+		for (i = 0, t = threads; i < nds; i++) {
+			if (pthread_join(*t++, NULL) != 0) {
+				err(1, "Failed to join a ReadSetWorker thread");
+			}
+		}
 	}
 
 	for (i = 0; i < nds; i++)
