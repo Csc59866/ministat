@@ -653,13 +653,8 @@ main(int argc, char **argv)
 
 	pthread_t *threads;
 	pthread_mutex_init(&mutex, NULL);
-	struct readset_file *file;
+	struct readset_file *file = calloc(1, sizeof(* file));
 	
-	if (threads == NULL) {
-        perror("error: failed to allocate threads");
-        exit(EXIT_FAILURE);
-    }
-
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
 
