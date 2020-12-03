@@ -498,7 +498,7 @@ dbl_cmp(const void *a, const void *b)
 }
 
 static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
+ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	int f;
@@ -587,6 +587,9 @@ ReadSet(const char *n, int column, const char *delim)
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[1] = elapsed_us(&start, &stop);
+	//mutex
+	data=s;
+	//mutex 
 	return (s);
 }
 
