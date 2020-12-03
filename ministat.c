@@ -486,7 +486,7 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
-static struct dataset *
+static void
 ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
@@ -579,7 +579,6 @@ ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 	//mutex
 	data=s;
 	//mutex 
-	return (s);
 }
 
 struct readset_file {
@@ -708,7 +707,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim, *ds);
+		ReadSet("-", column, delim, *ds);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
