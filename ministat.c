@@ -621,7 +621,7 @@ main(int argc, char **argv)
 
 	pthread_t *threads;
 	pthread_mutex_init(&mutex, NULL);
-	threads = malloc(sizeof(pthread_t) * (argc - 1)); 
+	struct readset_file *file;
 	
 	if (threads == NULL) {
         perror("error: failed to allocate threads");
