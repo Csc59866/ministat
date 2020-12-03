@@ -488,7 +488,7 @@ dbl_cmp(const void *a, const void *b)
 }
 
 static void
-ReadSet(const char *n, int column, const char *delim, struct dataset *data)
+ReadSet(const char *n, int column, const char *delim, struct dataset **data)
 {
 	int f;
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
