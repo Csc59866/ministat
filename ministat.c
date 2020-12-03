@@ -581,7 +581,7 @@ ReadSet(const char *n, int column, const char *delim, struct dataset **data)
 	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[1] = elapsed_us(&start, &stop); //time for the last thread to reach CS
 
-	data[global_count] = *s;
+	data[global_count] = s;
 	global_count++;
 	pthread_mutex_unlock(&mutex); 
 }
@@ -590,11 +590,11 @@ struct readset_file {
     char *name;
     int column;
     const char *delim;
-	struct dataset *dataset;
+	struct dataset **dataset;
 };
 
 static struct readset_file * 
-NewFile(char *name, int column, const char* delim, struct dataset *dataset){
+NewFile(char *name, int column, const char* delim, struct dataset **dataset){
 	struct readset_file *file = calloc(1, sizeof(* file));
 	file->name = strdup(name);
 	file->column = column;
@@ -605,12 +605,12 @@ NewFile(char *name, int column, const char* delim, struct dataset *dataset){
 
 static void *thread_function(void *file){
 	struct readset_file *read_file = (struct readset_file *)file;
-	struct dataset *ds = read_file->dataset;
+	struct dataset **ds = read_file->dataset;
 	const char * name = read_file->name;
 	int column = read_file->column;
 	const char * delim = read_file->delim;
     ReadSet(name, column, delim, ds);
-	free(read_file);
+	//free(read_file);
     return NULL;
 }
 
@@ -643,6 +643,7 @@ main(int argc, char **argv)
 {
 	struct dataset *ds[7];
 	struct readset_file *files[7];
+	struct dataset **ds_pointer;
 	int nds;
 	double a;
 	const char *delim = " \t";
@@ -722,7 +723,8 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ReadSet("-", column, delim, *ds);
+		ds_pointer=ds;
+		ReadSet("-", column, delim, ds_pointer);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
@@ -736,7 +738,8 @@ main(int argc, char **argv)
     	}
 
 		for (i = 0; i < nds; i++){
-			files[i]=NewFile(argv[i], column, delim, *ds);
+			ds_pointer=ds;
+			files[i]=NewFile(argv[i], column, delim, ds_pointer);
 			if (pthread_create(&threads[i], NULL, thread_function, (void *)files[i]) != 0) {
 				perror("error: failed to create a thread");
             	exit(EXIT_FAILURE);
