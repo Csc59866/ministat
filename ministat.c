@@ -719,26 +719,30 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim);
+		ds[0] = ReadSet("-", column, delim, ds);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		//================================================//
+		//==================================MULTITHREAD===============================================//
 		threads = malloc(sizeof(pthread_t) * (nds)); 
 		if (threads == NULL) {
 			perror("error: failed to allocate threads");
 			exit(EXIT_FAILURE);
     	}
+
 		file->column = column;
-		file->delim = delim;
+		file->delim = (const char *) delim;
+		file->dataset = ds;
 		for (i = 0; i < nds; i++){
 			file->name = argv[i];
 			pthread_create(threads[i], NULL, ReadSet, (void *)file);
 		}
 
 		free(threads);
+		free(file);
+		//==================================MULTITHREAD===============================================//
 	}
 
 	for (i = 0; i < nds; i++)
