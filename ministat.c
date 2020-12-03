@@ -18,6 +18,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "queue.h"
 
@@ -135,6 +136,7 @@ double student [NSTUDENT + 1][NCONF] = {
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 static unsigned long long ts[2] = {0,0};
 struct timespec start, stop;
+static pthread_mutex_t mutex;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -616,6 +618,15 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
+
+	pthread_t *threads;
+	pthread_mutex_init(&mutex, NULL);
+	threads = malloc(sizeof(pthread_t) * (argc - 1)); 
+	
+	if (threads == NULL) {
+        perror("error: failed to allocate threads");
+        exit(EXIT_FAILURE);
+    }
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
