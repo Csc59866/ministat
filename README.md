@@ -9,5 +9,4 @@ There should be no dependencies besides the standard libraries and a functional 
 
 	$ cd ministat/
 	$ make
-	$ make PREFIX=/usr install
-	install -m 0755 ministat  /usr/bin/ministat
+	
