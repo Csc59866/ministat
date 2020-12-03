@@ -137,7 +137,7 @@ static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 static unsigned long long ts[2] = {0,0};
 struct timespec start, stop;
 static pthread_mutex_t mutex;
-static unsigned long global_count = 0;
+static unsigned int global_count = 0;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -490,7 +490,6 @@ dbl_cmp(const void *a, const void *b)
 static void
 ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 {
-	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	int f;
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	struct dataset *s;
@@ -575,10 +574,13 @@ ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 	}
 
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
+	
 	//entering CS
 	pthread_mutex_lock(&mutex);
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[1] = elapsed_us(&start, &stop); //time for the last thread to reach CS
+
 	data[global_count] = *s;
 	global_count++;
 	pthread_mutex_unlock(&mutex); 
@@ -591,12 +593,22 @@ struct readset_file {
 	struct dataset *dataset;
 };
 
+static struct readset_file * 
+NewFile(char *name, int column, const char* delim, struct dataset *dataset){
+	struct readset_file *file = calloc(1, sizeof(* file));
+	file->name = strdup(name);
+	file->column = column;
+	file->delim = delim;
+	file->dataset = dataset;
+	return file;
+}
+
 static void *thread_function(void *file){
 	struct readset_file *read_file = (struct readset_file *)file;
+	struct dataset *ds = read_file->dataset;
 	const char * name = read_file->name;
 	int column = read_file->column;
 	const char * delim = read_file->delim;
-	struct dataset *ds = read_file->dataset;
     ReadSet(name, column, delim, ds);
 	free(read_file);
     return NULL;
@@ -630,6 +642,7 @@ int
 main(int argc, char **argv)
 {
 	struct dataset *ds[7];
+	struct readset_file *files[7];
 	int nds;
 	double a;
 	const char *delim = " \t";
@@ -644,7 +657,6 @@ main(int argc, char **argv)
 
 	pthread_t *threads;
 	pthread_mutex_init(&mutex, NULL);
-	struct readset_file *file = calloc(1, sizeof(* file));
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -723,14 +735,13 @@ main(int argc, char **argv)
 			exit(EXIT_FAILURE);
     	}
 
-		file->column = column;
-		file->delim = delim;
-		file->dataset = ds;
 		for (i = 0; i < nds; i++){
-			file->name = argv[i];
-			if (pthread_create(&threads[i], NULL, thread_function, (void *)file) != 0) {
+			files[i]=NewFile(argv[i], column, delim, *ds);
+			if (pthread_create(&threads[i], NULL, thread_function, (void *)files[i]) != 0) {
 				perror("error: failed to create a thread");
             	exit(EXIT_FAILURE);
+				free(threads);
+				free(files);
 			}
 		}
 
@@ -738,9 +749,6 @@ main(int argc, char **argv)
 			if (pthread_join(threads[i], NULL) != 0)
 				perror("warning: failed to join a thread");
    		}
-
-		free(threads);
-		free(file);
 		//==================================MULTITHREAD===============================================//
 	}
 	
