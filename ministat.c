@@ -593,6 +593,24 @@ ReadSet(const char *n, int column, const char *delim, struct dataset *data)
 	return (s);
 }
 
+struct readset_file {
+    char *name;
+    int column;
+    char *delim;
+	struct dataset *dataset;
+};
+
+static void *thread_function(void *file){
+	struct readset_file *read_file = (struct readset_file *)file;
+	const char * name = read_file->name;
+	int column = read_file->column;
+	const char * delim = read_file->delim;
+	struct dataset *ds = read_file->dataset;
+    ReadSet(name, column, delim, ds);
+	free(read_file);
+    return NULL;
+}
+
 static void
 usage(char const *whine)
 {
