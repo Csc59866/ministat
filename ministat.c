@@ -690,7 +690,6 @@ ReadSet(void *readset_context)
 		}
 	}
 
-	//qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	an_qsort_C(s->points, s->n);
 
 	context->multiset[context->index] = s;
