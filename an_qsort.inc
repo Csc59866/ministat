@@ -68,8 +68,18 @@
 #endif
 
 #ifndef AN_QSORT_CMP
-#define AN_QSORT_CMP(a, b) \
-    ({  (*a < *b) ? -1 : 1; })
+#define AN_QSORT_CMP(a, b)  \
+    ({                      \
+        int answer;         \
+        if (*a < *b){       \
+           	answer = -1;    \
+        }else if (*a > *b){ \
+            answer = 1;     \
+        }else{              \
+        	answer = 0;     \
+        }                   \
+        answer;             \
+    })
 #endif
 
 #ifndef AN_QSORT_ENABLE_INSERTION_SORT_HEURISTIC
