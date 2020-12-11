@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 
 #include "dtoa/strtod-lite.c"
+#include "an_qsort.inc"
 #include <err.h>
 #include <fcntl.h>
 #include <math.h>
@@ -473,19 +474,19 @@ DumpPlot(void)
 	putchar('\n');
 }
 
-static int
-dbl_cmp(const void *a, const void *b)
-{
-	const double *aa = a;
-	const double *bb = b;
+// static int
+// dbl_cmp(const void *a, const void *b)
+// {
+// 	const double *aa = a;
+// 	const double *bb = b;
 
-	if (*aa < *bb)
-		return (-1);
-	else if (*aa > *bb)
-		return (1);
-	else
-		return (0);
-}
+// 	if (*aa < *bb)
+// 		return (-1);
+// 	else if (*aa > *bb)
+// 		return (1);
+// 	else
+// 		return (0);
+// }
 
 static void
 ReadSet(const char *n, int column, const char *delim, struct dataset **data)
@@ -573,7 +574,8 @@ ReadSet(const char *n, int column, const char *delim, struct dataset **data)
 		sp += al->n;
 	}
 
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_C(s->points, s->n); //inline sorting algorithm
+	//qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	
 	//entering CS
 	pthread_mutex_lock(&mutex);
