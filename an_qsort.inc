@@ -39,6 +39,8 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <sys/types.h> //you might not need this if on POSIX system
+
 //ADDING MAX AND MIN MACROS HERE-----------------------------------------------------------
 #ifndef max
 #define max(a, b)					\
