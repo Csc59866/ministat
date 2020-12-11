@@ -10,7 +10,6 @@
 #include <sys/ioctl.h>
 
 #include "dtoa/strtod-lite.c"
-#include "an_qsort.inc"
 #include <err.h>
 #include <fcntl.h>
 #include <math.h>
@@ -139,8 +138,6 @@ double student [NSTUDENT + 1][NCONF] = {
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 static unsigned long long ts[2] = {0,0};
 struct timespec start, stop;
-static pthread_mutex_t mutex;
-static unsigned int global_count = 0;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -506,19 +503,19 @@ DumpPlot(void)
 	putchar('\n');
 }
 
-// static int
-// dbl_cmp(const void *a, const void *b)
-// {
-// 	const double *aa = a;
-// 	const double *bb = b;
+static int
+dbl_cmp(const void *a, const void *b)
+{
+	const double *aa = a;
+	const double *bb = b;
 
-// 	if (*aa < *bb)
-// 		return (-1);
-// 	else if (*aa > *bb)
-// 		return (1);
-// 	else
-// 		return (0);
-// }
+	if (*aa < *bb)
+		return (-1);
+	else if (*aa > *bb)
+		return (1);
+	else
+		return (0);
+}
 
 struct readset_context {
 	struct dataset **multiset;
@@ -715,34 +712,6 @@ ReadSet(void *readset_context)
 	return (s);
 }
 
-struct readset_file {
-    char *name;
-    int column;
-    const char *delim;
-	struct dataset **dataset;
-};
-
-static struct readset_file * 
-NewFile(char *name, int column, const char* delim, struct dataset **dataset){
-	struct readset_file *file = calloc(1, sizeof(* file));
-	file->name = strdup(name);
-	file->column = column;
-	file->delim = delim;
-	file->dataset = dataset;
-	return file;
-}
-
-static void *thread_function(void *file){
-	struct readset_file *read_file = (struct readset_file *)file;
-	struct dataset **ds = read_file->dataset;
-	const char * name = read_file->name;
-	int column = read_file->column;
-	const char * delim = read_file->delim;
-    ReadSet(name, column, delim, ds);
-	//free(read_file);
-    return NULL;
-}
-
 static void
 usage(char const *whine)
 {
@@ -771,8 +740,6 @@ int
 main(int argc, char **argv)
 {
 	struct dataset *ds[7];
-	struct readset_file *files[7];
-	struct dataset **ds_pointer;
 	int nds;
 	double a;
 	const char *delim = " \t";
@@ -784,9 +751,6 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
-
-	pthread_t *threads;
-	pthread_mutex_init(&mutex, NULL);
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -891,13 +855,6 @@ main(int argc, char **argv)
 		}
 	}
 
-		for (int i = 0; i < nds; i++) { //validate join threads
-			if (pthread_join(threads[i], NULL) != 0)
-				perror("warning: failed to join a thread");
-   		}
-		//==================================MULTITHREAD===============================================//
-	}
-	
 	for (i = 0; i < nds; i++)
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
 
