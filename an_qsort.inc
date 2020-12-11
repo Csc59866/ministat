@@ -60,15 +60,16 @@
 #endif
 
 #ifndef AN_QSORT_SUFFIX
-# error "AN_QSORT_SUFFIX undefined"
+#define AN_QSORT_SUFFIX C
 #endif
 
 #ifndef AN_QSORT_TYPE
-# error "AN_QSORT_TYPE undefined"
+#define AN_QSORT_TYPE double
 #endif
 
 #ifndef AN_QSORT_CMP
-# error "AN_QSORT_CMP undefined"
+#define AN_QSORT_CMP(a, b) \
+    ({  (*a < *b) ? -1 : 1; })
 #endif
 
 #ifndef AN_QSORT_ENABLE_INSERTION_SORT_HEURISTIC
