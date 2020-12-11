@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 
 #include "dtoa/strtod-lite.c"
+#include "an_qsort.inc"
 #include <err.h>
 #include <fcntl.h>
 #include <math.h>
@@ -503,20 +504,6 @@ DumpPlot(void)
 	putchar('\n');
 }
 
-static int
-dbl_cmp(const void *a, const void *b)
-{
-	const double *aa = a;
-	const double *bb = b;
-
-	if (*aa < *bb)
-		return (-1);
-	else if (*aa > *bb)
-		return (1);
-	else
-		return (0);
-}
-
 struct readset_context {
 	struct dataset **multiset;
 	int index;
@@ -703,7 +690,7 @@ ReadSet(void *readset_context)
 		}
 	}
 
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_C(s->points, s->n);
 
 	context->multiset[context->index] = s;
 
