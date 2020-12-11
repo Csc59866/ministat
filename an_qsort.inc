@@ -71,9 +71,11 @@
 #define AN_QSORT_CMP(a, b)  \
     ({                      \
         int answer;         \
-        if (*a < *b){       \
+		__typeof__(a) _a = (a);			\
+		__typeof__(b) _b = (b);			\
+        if (*_a < *_b){       \
            	answer = -1;    \
-        }else if (*a > *b){ \
+        }else if (*_a > *_b){ \
             answer = 1;     \
         }else{              \
         	answer = 0;     \
