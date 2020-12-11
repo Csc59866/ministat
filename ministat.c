@@ -14,16 +14,18 @@
 #include <err.h>
 #include <fcntl.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <sys/stat.h>
 #include <time.h>
-#include <pthread.h>
+#include <unistd.h>
 
 #include "queue.h"
 
 #define ARRAYLIST_SIZE 100000
+#define READSET_THREAD_COUNT 4
 
 #define NSTUDENT 100
 #define NCONF 6
@@ -174,38 +176,68 @@ NewArrayList(void)
 	return al;
 }
 
+struct miniset {
+	struct arraylist *head, *tail;
+	double sy, syy;
+	unsigned n;
+	struct miniset *next;
+};
+
+struct miniset *
+NewMiniSet(void)
+{
+	struct miniset *ms;
+
+	ms = calloc(1, sizeof *ms);
+	ms->tail = ms->head = NewArrayList();
+	return(ms);
+}
+
+static void
+AddPoint(struct miniset *ms, double a)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	if (ms->tail->n >= ARRAYLIST_SIZE) {
+		ms->tail = ms->tail->next = NewArrayList();
+	}
+	ms->tail->points[ms->tail->n++] = a;
+	ms->sy += a;
+	ms->syy += a * a;
+	ms->n += 1;
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
+	ts[0] = elapsed_us(&start, &stop);
+}
+
 struct dataset {
 	char *name;
-	struct arraylist *head, *tail;
+	struct miniset *head, *tail;
 	double *points;
 	double sy, syy;
 	unsigned n;
 };
 
+static void
+AddMiniSet(struct dataset *ds, struct miniset *ms)
+{
+	ds->sy += ms->sy;
+	ds->syy += ms->syy;
+	ds->n += ms->n;
+
+	if (ds->head) {
+		ds->tail = ds->tail->next = ms;
+	}
+	else {
+		ds->tail = ds->head = ms;
+	}
+}
+
 static struct dataset *
-NewSet(void)
+NewDataSet(void)
 {
 	struct dataset *ds;
 
 	ds = calloc(1, sizeof *ds);
-	ds->tail = ds->head = NewArrayList();
 	return(ds);
-}
-
-static void
-AddPoint(struct dataset *ds, double a)
-{
-	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
-	if (ds->tail->n >= ARRAYLIST_SIZE) {
-		ds->tail->next = NewArrayList();
-		ds->tail = ds->tail->next;
-	}
-	ds->tail->points[ds->tail->n++] = a;
-	ds->sy += a;
-	ds->syy += a * a;
-	ds->n += 1;
-	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
-	ts[0] = elapsed_us(&start, &stop);
 }
 
 static double
@@ -488,39 +520,47 @@ DumpPlot(void)
 // 		return (0);
 // }
 
-static void
-ReadSet(const char *n, int column, const char *delim, struct dataset **data)
-{
-	int f;
-	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+struct readset_context {
+	struct dataset **multiset;
+	int index;
+	int fd; /* file descriptor */
+	const char *n; /* filename */
+	int column;
+	const char *delim;
+};
+
+struct readsetworker_context {
+	struct readset_context *file;
+	size_t start, end;
 	struct dataset *s;
+};
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *
+ReadSetWorker(void *readsetworker_context)
+{
+	struct readsetworker_context *context = readsetworker_context;
+	struct miniset *ms = NewMiniSet();
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	double d;
-	int line;
+	int line = 0;
 	int i;
 	int bytes_read;
+	off_t cursor = context->start;
 	size_t offset = 0;
+	size_t ctx_size, buflen;
 
-	if (n == NULL) {
-		f = STDIN_FILENO;
-		n = "<stdin>";
-	} else if (!strcmp(n, "-")) {
-		f = STDIN_FILENO;
-		n = "<stdin>";
-	} else {
-		f = open(n, O_RDONLY);
-	}
-	if (f == -1)
-		err(1, "Cannot open %s", n);
-	s = NewSet();
-	s->name = strdup(n);
-	line = 0;
 	for (;;) {
-		bytes_read = read(f, buf, sizeof buf - 1);
+		ctx_size = context->end - cursor + 1;
+		buflen = BUFSIZ <= ctx_size ? BUFSIZ : ctx_size;
+		bytes_read = pread(context->file->fd, buf, buflen - 1, cursor);
 
 		if (bytes_read <= 0) {
 			break;
 		}
 
+		cursor += bytes_read;
 		buf[bytes_read] = '\0';
 		char *c = buf;
 		char *str_start = c;
@@ -537,20 +577,21 @@ ReadSet(const char *n, int column, const char *delim, struct dataset **data)
 					*t != '#';
 					i++) {
 					t = p;
-					p += strcspn(p, delim);
+					p += strcspn(p, context->file->delim);
 					if (*p != '\0')
 						p++;
-					if (i == column)
+					if (i == context->file->column)
 						break;
 				}
 				if (t == p || *t == '#')
 					continue;
 
 				d = strtod_fast(t, &p);
-				if (strcspn(p, delim))
-					err(2, "Invalid data on line %d in %s\n", line, n);
+				if (strcspn(p, context->file->delim))
+					err(2, "Invalid data on line %d in %s\n", line,
+						context->file->n);
 				if (*str != '\0')
-					AddPoint(s, d);
+					AddPoint(ms, d);
 			}
 		}
 
@@ -559,33 +600,119 @@ ReadSet(const char *n, int column, const char *delim, struct dataset **data)
 			offset = strlen(str);
 		}
 	}
+
+	pthread_mutex_lock(&mutex);
+	AddMiniSet(context->s, ms);
+	pthread_mutex_unlock(&mutex);
+
+	return NULL;
+}
+
+static void *
+ReadSet(void *readset_context)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	struct readset_context *context = readset_context;
+	int f, i;
+	struct dataset *s;
+	s = NewDataSet();
+	s->name = strdup(context->n);
+
+	if (context->n == NULL) {
+		f = STDIN_FILENO;
+		context->n = "<stdin>";
+	} else if (!strcmp(context->n, "-")) {
+		f = STDIN_FILENO;
+		context->n = "<stdin>";
+	} else {
+		f = open(context->n, O_RDONLY);
+	}
+	if (f == -1)
+		err(1, "Cannot open %s", context->n);
+
+	context->fd = f;
+
+	struct stat stat;
+	size_t share, share_actual, leftover, ctx_start, ctx_end;
+
+	fstat(f, &stat);
+	share = stat.st_size / READSET_THREAD_COUNT;
+	leftover = stat.st_size % READSET_THREAD_COUNT;
+	ctx_start = 0;
+	ctx_end = share;
+
+	pthread_t threads[READSET_THREAD_COUNT];
+	pthread_t *t = threads;
+	size_t thread_count = 0;
+	char candidate;
+
+	for (i = 0; i < READSET_THREAD_COUNT; ++i) {
+		share_actual = share;
+
+		if (i == 0 && leftover) {
+			share_actual -= leftover;
+			ctx_end += leftover;
+			leftover = 0;
+		}
+
+		while (pread(f, &candidate, 1, ctx_end - 1)) {
+			if (candidate == '\n') {
+				break;
+			}
+
+			share_actual--;
+			ctx_end++;
+		}
+
+		struct readsetworker_context *worker_context = malloc(
+			sizeof *worker_context
+		);
+		worker_context->file = context;
+		worker_context->start = ctx_start;
+		worker_context->end = ctx_end;
+		worker_context->s = s;
+
+		if (pthread_create(t++, NULL, ReadSetWorker, worker_context) != 0) {
+			err(1, "Failed to create a ReadSetWorker thread");
+		}
+
+		thread_count++;
+
+		ctx_start = ctx_end;
+		ctx_end += share_actual;
+	}
+
+	for (i = 0, t = threads; i < thread_count; ++i) {
+		if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Failed to join a ReadSetWorker thread");
+		}
+	}
+
 	close(f);
+
 	if (s->n < 3) {
 		fprintf(stderr,
-		    "Dataset %s must contain at least 3 data points\n", n);
+		    "Dataset %s must contain at least 3 data points\n", context->n);
 		exit (2);
 	}
 
 	s->points = malloc(s->n * sizeof *s->points);
 	double *sp = s->points;
 
-	for (struct arraylist *al = s->head; al != NULL; al = al->next) {
-		memcpy(sp, al->points, al->n * sizeof *sp);
-		sp += al->n;
+	for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
+		for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
+			memcpy(sp, al->points, al->n * sizeof *sp);
+			sp += al->n;
+		}
 	}
 
-	an_qsort_C(s->points, s->n); //inline sorting algorithm
-	//qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	
-	//entering CS
-	pthread_mutex_lock(&mutex);
-	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
-	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
-	ts[1] = elapsed_us(&start, &stop); //time for the last thread to reach CS
+	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 
-	data[global_count] = s;
-	global_count++;
-	pthread_mutex_unlock(&mutex); 
+	context->multiset[context->index] = s;
+
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
+	ts[1] = elapsed_us(&start, &stop);
+	return (s);
 }
 
 struct readset_file {
@@ -725,30 +852,44 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds_pointer=ds;
-		ReadSet("-", column, delim, ds_pointer);
 		nds = 1;
+
+		struct readset_context context;
+		context.multiset = ds;
+		context.index = 0;
+		context.n = "-";
+		context.column = column;
+		context.delim = delim;
+
+		ReadSet((void *)&context);
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
-		nds = argc;
-		//==================================MULTITHREAD===============================================//
-		threads = malloc(sizeof(pthread_t) * (nds)); 
-		if (threads == NULL) {
-			perror("error: failed to allocate threads");
-			exit(EXIT_FAILURE);
-    	}
 
-		for (i = 0; i < nds; i++){
-			ds_pointer=ds;
-			files[i]=NewFile(argv[i], column, delim, ds_pointer);
-			if (pthread_create(&threads[i], NULL, thread_function, (void *)files[i]) != 0) {
-				perror("error: failed to create a thread");
-            	exit(EXIT_FAILURE);
-				free(threads);
-				free(files);
+		nds = argc;
+
+		pthread_t threads[nds];
+		pthread_t *t = threads;
+
+		for (i = 0; i < nds; i++) {
+			struct readset_context *context = malloc(sizeof *context);
+			context->multiset = ds;
+			context->index = i;
+			context->n = argv[i];
+			context->column = column;
+			context->delim = delim;
+
+			if (pthread_create(t++, NULL, ReadSet, context) != 0) {
+				err(1, "Failed to create a ReadSet thread");
 			}
 		}
+
+		for (i = 0, t = threads; i < nds; i++) {
+			if (pthread_join(*t++, NULL) != 0) {
+				err(1, "Failed to join a ReadSetWorker thread");
+			}
+		}
+	}
 
 		for (int i = 0; i < nds; i++) { //validate join threads
 			if (pthread_join(threads[i], NULL) != 0)
