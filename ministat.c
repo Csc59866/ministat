@@ -176,6 +176,7 @@ NewArrayList(void)
 
 struct miniset {
 	struct arraylist *head, *tail;
+	double *points;
 	double sy, syy;
 	unsigned n;
 	struct miniset *next;
@@ -526,7 +527,7 @@ ReadSetWorker(void *readsetworker_context)
 	struct readsetworker_context *context = readsetworker_context;
 	struct miniset *ms = context->m = NewMiniSet();
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
-	double d;
+	double d, *points;
 	int line = 0;
 	int i;
 	int bytes_read;
@@ -582,6 +583,13 @@ ReadSetWorker(void *readsetworker_context)
 			strcpy(str, str_start);
 			offset = strlen(str);
 		}
+	}
+
+	points = ms->points = malloc(ms->n * sizeof *points);
+
+	for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
+		memcpy(points, al->points, al->n * sizeof *points);
+		points += al->n;
 	}
 
 	return NULL;
@@ -682,10 +690,7 @@ ReadSet(void *readset_context)
 	double *sp = s->points;
 
 	for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
-		for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
-			memcpy(sp, al->points, al->n * sizeof *sp);
-			sp += al->n;
-		}
+		memcpy(sp, ms->points, ms->n * sizeof *sp);
 	}
 
 	an_qsort_C(s->points, s->n);
