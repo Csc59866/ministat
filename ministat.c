@@ -837,7 +837,7 @@ main(int argc, char **argv)
 
 		for (i = 0, t = threads; i < nds; i++) {
 			if (pthread_join(*t++, NULL) != 0) {
-				err(1, "Failed to join a ReadSetWorker thread");
+				err(1, "Failed to join a ReadSet thread");
 			}
 		}
 	}
