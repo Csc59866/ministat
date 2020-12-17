@@ -517,15 +517,14 @@ struct readsetworker_context {
 	struct readset_context *file;
 	size_t start, end;
 	struct dataset *s;
+	struct miniset *m;
 };
-
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *
 ReadSetWorker(void *readsetworker_context)
 {
 	struct readsetworker_context *context = readsetworker_context;
-	struct miniset *ms = NewMiniSet();
+	struct miniset *ms = context->m = NewMiniSet();
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	double d;
 	int line = 0;
@@ -585,10 +584,6 @@ ReadSetWorker(void *readsetworker_context)
 		}
 	}
 
-	pthread_mutex_lock(&mutex);
-	AddMiniSet(context->s, ms);
-	pthread_mutex_unlock(&mutex);
-
 	return NULL;
 }
 
@@ -625,6 +620,7 @@ ReadSet(void *readset_context)
 	ctx_start = 0;
 	ctx_end = share;
 
+	struct readsetworker_context *workers[READSET_THREAD_COUNT];
 	pthread_t threads[READSET_THREAD_COUNT];
 	pthread_t *t = threads;
 	size_t thread_count = 0;
@@ -648,7 +644,7 @@ ReadSet(void *readset_context)
 			ctx_end++;
 		}
 
-		struct readsetworker_context *worker_context = malloc(
+		struct readsetworker_context *worker_context = workers[i] = malloc(
 			sizeof *worker_context
 		);
 		worker_context->file = context;
@@ -670,6 +666,8 @@ ReadSet(void *readset_context)
 		if (pthread_join(*t++, NULL) != 0) {
 			err(1, "Failed to join a ReadSetWorker thread");
 		}
+
+		AddMiniSet(s, workers[i]->m);
 	}
 
 	close(f);
