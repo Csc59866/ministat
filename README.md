@@ -44,7 +44,7 @@ AddPoint(struct dataset *ds, double a)
 ```
 
 - [x] b. Use *an_qsort* to implement a final merge sort.
-<p>: Implement <i>#include "an_qsort.inc"</i></p>
+<p>: Implemented <i>#include "an_qsort.inc"</i></p>
 
 *Before*:
 
@@ -147,7 +147,7 @@ main(int argc, char **argv)
 ```
 
 - [x] e. Implement a raw I/O interface using read, write, open and close.
-<p>: Provide real timing data demonstrating the new parsing is better. Benchmark against multiple block sizes. Generate visualizations.</p>
+<p>: Provide real timing data demonstrating the new parsing is better. Benchmark against multiple block sizes.</p>
 
 *After*:
 
