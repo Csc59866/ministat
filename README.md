@@ -103,7 +103,7 @@ ReadSet(void *readset_context)
 ```
 
 - [x] d. Implement an alternative *strtod* function.
-<p>: Implemented <i>#include "dtoa/strtod-lite.c"</i> </p>
+<p>: Implemented <i>#include "dtoa/strtod-lite.c"</i>. <i>strtod_fast()</i> converts string to double, use FE_TONEAREST mode</p>
 
 *Before*:
 
@@ -133,8 +133,6 @@ main(int argc, char **argv)
 }
 
 ```
-
-<p><i>strtod_fast()</i> converts string to double, use FE_TONEAREST mode</p>
 
 *After*:
 
