@@ -5,7 +5,7 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 
 ### 1. Implement micro-optimizations
 - [x] a. Implement a new data structure for inserting new data points.
-<p>: Initially, change the algorithm to just use **realloc** without using calloc or memcpy.</p>
+<p>: Initially, change the algorithm to just use <strong>realloc</strong>without using calloc or memcpy.</p>
 
 *Before*:
 ```
@@ -43,7 +43,7 @@ AddPoint(struct dataset *ds, double a)
 
 ```
 
-- [x] b. Use an_qsort to implement a final merge sort.
+- [x] b. Use an_qsort to implement a final merge sort.<br/>
 *Before*:
 ```
 static struct dataset *
@@ -80,7 +80,7 @@ ReadSet(void *readset_context)
 
 
 
-- [x] c. Implement a new option '-v' that emits verbose timing data.
+- [x] c. Implement a new option '-v' that emits verbose timing data.<br/>
 *Before*:
 ```
 ```
