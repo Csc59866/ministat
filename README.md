@@ -79,8 +79,6 @@ ReadSet(void *readset_context)
 }	
 ```
 
-
-
 - [x] c. Implement a new option '-v' that emits verbose timing data.
 <p>: Instead of implementing a new option '-v', we put <i>clock_gettime()</i> so tha twe can collect timing information that we're interested in optimizing and print it out.</p>
 ```
@@ -126,6 +124,7 @@ main(int argc, char **argv)
 }
 
 ```
+
 <p><i>strtod_fast()</i> converts string to double, use FE_TONEAREST mode</p>
 *After*:
 ```
@@ -156,7 +155,22 @@ main(int argc, char **argv)
 ```
 ```
 
-### 2. Validate performance improvements
+### 2. Validate performance improvements and Visualizations
+<p>Original ministat vs. with-optimizations 1.a., 1.e., and 1.a.+ 1.e.</p>
+<p><strong> Linear Scale </strong></p>
+<img src="/images/linear_scale_1.png" />
+
+<p><strong> Logarithmic Scale </strong></p>
+<img src="/images/logarithmic_scale_1.png"/> 
+
+<p> Original ministat vs. with parallel file reading and parsing (4 threads) </p>
+<p><strong> Linear Scale </strong></p>
+<img src="/images/linear_scale_4_threads.png" />
+
+<p><strong> Logarithmic Scale </strong></p>
+<img src="/images/logarithmic_scale_4_threads.png"/> 
+
+
 
 ### 3. Switch to a multi-threaded architecture
 
