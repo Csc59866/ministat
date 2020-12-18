@@ -3,7 +3,7 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 
 ## Milestones 
 
-### 1. Implement micro-optimizations
+### 1. Implement micro-optimizations 
 - [x] a. Implement a new data structure for inserting new data points.
 <p>: Initially, change the algorithm to just use <strong>realloc</strong> without using calloc or memcpy.</p>
 
@@ -254,7 +254,7 @@ ReadSet(const char *n, int column, const char *delim)
 
 
 
-### 3. Switch to a multi-threaded architecture
+### 3. Switch to a multi-threaded architecture 
 
 ### 4. Implement integer mode
 
