@@ -740,6 +740,7 @@ main(int argc, char **argv)
 	int flag_n = 0;
 	int flag_q = 0;
 	int flag_v = 0;
+	int flag_i = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -792,6 +793,9 @@ main(int argc, char **argv)
 				usage("Invalid width, not a number.");
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
+			break;
+		case 'i': 
+			flag_i = 1;
 			break;
 		case 'v':
             flag_v = 1;
