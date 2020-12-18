@@ -260,6 +260,28 @@ ReadSet(const char *n, int column, const char *delim)
 
 ### 5. Validate performance improvements 
 
+- Original 
+```
+x game.txt
++ desktop.txt
+    N           Min           Max        Median           Avg        Stddev
+x 19992880             1 1.6039039e+09           868     166282.14      15806022
++ 15863880             1 1.5813409e+09             4     76146.461     4043837.6
+Difference at 95.0% confidence
+        -90135.7 +/- 7977.54
+        -54.2065% +/- 4.79759%
+        (Student's t, pooled s = 1.21051e+07)
+real    0m12.140s
+user    0m11.783s
+sys     0m0.356s
+```
+- Final Result
+```
+```
+
+
+
+
 
 ## Contributors
 
