@@ -257,6 +257,128 @@ ReadSet(const char *n, int column, const char *delim)
 
 ### 3. Switch to a multi-threaded architecture 
 
+<p> We removed the mutex when adding the new miniset </p>
+
+*Before*:
+
+```
+struct readsetworker_context {
+	struct readset_context *file;
+	size_t start, end;
+	struct dataset *s;
+};
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;	
+
+static void *	
+ReadSetWorker(void *readsetworker_context)	
+{	
+	struct readsetworker_context *context = readsetworker_context;		
+	struct miniset *ms = NewMiniSet();		
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;		
+	double d;		double d;
+	int line = 0;
+	....
+	..		
+}
+
+Reastatic void *
+ReadSetWorker(void *readsetworker_context)
+{
+	...
+	....
+	pthread_mutex_lock(&mutex);	
+	AddMiniSet(context->s, ms);	
+	pthread_mutex_unlock(&mutex);	
+
+	return NULL;
+}
+
+static void *
+ReadSet(void *readset_context)
+{
+	ctx_start = 0;
+	ctx_end = share;
+	
+	pthread_t threads[READSET_THREAD_COUNT];
+	pthread_t *t = threads;
+	size_t thread_count = 0;
+	.....
+	...
+	
+	struct readsetworker_context *worker_context = malloc(sizeof *worker_context);
+	
+	...
+	.....
+	if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Failed to join a ReadSetWorker thread");				
+	}
+    }
+    close(f);
+
+}
+
+```
+
+*After*:
+
+```
+struct readsetworker_context {
+	...
+	struct miniset *m;
+};
+
+static void *	
+ReadSetWorker(void *readsetworker_context)	
+{	
+	struct readsetworker_context *context = readsetworker_context;		
+	struct miniset *ms = context->m = NewMiniSet();		
+	
+	....
+	..		
+}
+
+Reastatic void *
+ReadSetWorker(void *readsetworker_context)
+{
+	...
+	....
+	pthread_mutex_lock(&mutex);	
+	AddMiniSet(context->s, ms);	
+	pthread_mutex_unlock(&mutex);	
+
+	return NULL;
+}
+
+static void *
+ReadSet(void *readset_context)
+{
+	ctx_start = 0;
+	ctx_end = share;
+	
+	struct readsetworker_context *workers[READSET_THREAD_COUNT];
+	pthread_t threads[READSET_THREAD_COUNT];
+	pthread_t *t = threads;
+	.....
+	...
+	
+	struct readsetworker_context *worker_context = workers[i] = malloc(sizeof *worker_context);
+	
+	...
+	.....
+	if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Failed to join a ReadSetWorker thread");				
+	}			
+
+	AddMiniSet(s, workers[i]->m);
+    }
+    close(f);
+
+}
+```
+
+
+
 ### 4. Implement integer mode
 
 ### 5. Validate performance improvements 
