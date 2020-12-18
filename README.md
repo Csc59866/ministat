@@ -229,11 +229,14 @@ ReadSet(const char *n, int column, const char *delim)
 
 - [x] f. Implement more efficient string tokenization.
 <p>: Provide real timing data demonstrating the new parsing is better. Generate visualizations.</p>
+
 *Before*:
+
 ```
 ```
 
 *After*:
+
 ```
 ```
 
