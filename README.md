@@ -44,8 +44,10 @@ AddPoint(struct dataset *ds, double a)
 ```
 
 - [x] b. Use an_qsort to implement a final merge sort.
-<p>: Implement <i>#include "an_qsort.inc"</i> </p>
+<p>: Implement <i>#include "an_qsort.inc"</i></p>
+
 *Before*:
+
 ```
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
@@ -59,6 +61,7 @@ ReadSet(const char *n, int column, const char *delim)
 ```
 
 *After*:
+
 ```
 static void *
 ReadSet(void *readset_context)
@@ -81,6 +84,9 @@ ReadSet(void *readset_context)
 
 - [x] c. Implement a new option '-v' that emits verbose timing data.
 <p>: Instead of implementing a new option '-v', we put <i>clock_gettime()</i> so tha twe can collect timing information that we're interested in optimizing and print it out.</p>
+
+*After*:
+
 ```
 #include <time.h>
 ...
@@ -95,9 +101,12 @@ ReadSet(void *readset_context)
 }
 
 ```
+
 - [x] d. Implement an alternative *strtod* function.
 <p>Implemented <i>#include "dtoa/strtod-lite.c"</i> </p>
+
 *Before*:
+
 ```
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
@@ -135,9 +144,9 @@ main(int argc, char **argv)
 		AddPoint(ms, d);
 ```
 
-
 - [x] e. Implement a raw I/O interface using read, write, open and close.
 <p>: Provide real timing data demonstrating the new parsing is better. Benchmark against multiple block sizes. Generate visualizations.</p>
+
 *Before*:
 ```
 ```
@@ -156,14 +165,14 @@ main(int argc, char **argv)
 ```
 
 ### 2. Validate performance improvements and Visualizations
-<p>Original ministat vs. with-optimizations 1.a., 1.e., and 1.a.+ 1.e.</p>
+- Original ministat vs. with-optimizations 1.a., 1.e., and 1.a.+ 1.e.
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_1.png" />
 
 <p><strong> Logarithmic Scale </strong></p>
 <img src="/images/logarithmic_scale_1.png"/> 
 
-<p> Original ministat vs. with parallel file reading and parsing (4 threads) </p>
+- Original ministat vs. with parallel file reading and parsing (4 threads). 
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_4_threads.png" />
 
