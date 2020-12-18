@@ -4,8 +4,8 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 ## Milestones 
 
 ### 1. Implement micro-optimizations
-- Implement a new data structure for inserting new data points:
-<p>Initially, change the algorithm to just use realloc without using calloc or memcpy.</p>
+- [x] a. Implement a new data structure for inserting new data points.
+<p>: Initially, change the algorithm to just use **realloc** without using calloc or memcpy.</p>
 
 Before:
 ```
@@ -42,6 +42,19 @@ AddPoint(struct dataset *ds, double a)
 }
 
 ```
+
+- [x] b. Use an_qsort to implement a final merge sort.
+
+- [x] c. Implement a new option '-v' that emits verbose timing data.
+
+- [x] d. Implement an alternative strtod function.
+<p>: Provide real timing data demonstrating that the new strtod function is better. Generate visualizatinos.</p>
+
+- [x] e. Implement a raw I/O interface using read, write, open and close.
+<p>: Provide real timing data demonstrating the new parsing is better. Benchmark against multiple block sizes. Generate visualizations.</p>
+
+- [x] f. Implement more efficient string tokenization.
+<p>: Provide real timing data demonstrating the new parsing is better. Generate visualizations.</p>
 
 
 ### 2. Validate performance improvements
