@@ -43,7 +43,7 @@ AddPoint(struct dataset *ds, double a)
 
 ```
 
-- [x] b. Use an_qsort to implement a final merge sort.<br/>
+- [x] b. Use an_qsort to implement a final merge sort.<p></p>
 *Before*:
 ```
 static struct dataset *
@@ -80,7 +80,7 @@ ReadSet(void *readset_context)
 
 
 
-- [x] c. Implement a new option '-v' that emits verbose timing data.<br/>
+- [x] c. Implement a new option '-v' that emits verbose timing data.<p></p>
 *Before*:
 ```
 ```
@@ -131,7 +131,7 @@ ReadSet(void *readset_context)
 
 | Name          | Github        | 
 | ------------- | ------------- | 
-| Kangming Deng | <a href="https://github.com/Kamide">@Kamide/a>  | 
+| Kangming Deng | <a href="https://github.com/Kamide">@Kamide</a>  | 
 | Leah Meza | <a href="https://github.com/leahmezacs">@leahmezacs</a>  |
 | Jonathan So | <a href="https://github.com/Jonathan668">@Jonathan668</a>  |	
 | Jiseon Yu | <a href="https://github.com/JiseonYu">@JiseonYu</a> | 
