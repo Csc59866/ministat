@@ -247,7 +247,7 @@ NewDataSet(void)
 	return(ds);
 }
 
-static struct dataset *
+static struct intDataset *
 NewIntDataSet(void)
 {
 	struct intDataset *ds;
