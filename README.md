@@ -83,7 +83,7 @@ ReadSet(void *readset_context)
 ```
 
 - [x] c. Implement a new option '-v' that emits verbose timing data.
-<p>: Instead of implementing a new option '-v', we put <i>clock_gettime()</i> so tha twe can collect timing information that we're interested in optimizing and print it out.</p>
+<p>: Instead of implementing a new option '-v', we put <i>clock_gettime()</i> so that we can collect timing information that we're interested in optimizing.</p>
 
 *After*:
 
