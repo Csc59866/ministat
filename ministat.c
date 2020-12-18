@@ -215,6 +215,14 @@ struct dataset {
 	unsigned n;
 };
 
+struct intDataset {
+	char *name;
+	struct miniset *head, *tail;
+	int *points;
+	int sy, syy;
+	unsigned n;
+};
+
 static void
 AddMiniSet(struct dataset *ds, struct miniset *ms)
 {
@@ -238,6 +246,16 @@ NewDataSet(void)
 	ds = calloc(1, sizeof *ds);
 	return(ds);
 }
+
+static struct dataset *
+NewIntDataSet(void)
+{
+	struct intDataset *ds;
+
+	ds = calloc(1, sizeof *ds);
+	return(ds);
+}
+
 
 static double
 Min(struct dataset *ds)
