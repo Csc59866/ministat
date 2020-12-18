@@ -5,7 +5,7 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 
 ### 1. Implement micro-optimizations
 - [x] a. Implement a new data structure for inserting new data points.
-<p>: Initially, change the algorithm to just use <strong>realloc</strong>without using calloc or memcpy.</p>
+<p>: Initially, change the algorithm to just use <strong>realloc</strong> without using calloc or memcpy.</p>
 
 *Before*:
 ```
