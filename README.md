@@ -257,7 +257,7 @@ ReadSet(const char *n, int column, const char *delim)
 
 ### 3. Switch to a multi-threaded architecture 
 
-<p> We removed the mutex when adding the new miniset </p>
+- We removed the mutex when adding the new miniset 
 
 *Before*:
 
@@ -376,8 +376,90 @@ ReadSet(void *readset_context)
 
 }
 ```
+- Parallelize appending of miniset points in *ReadSet* instend of *ReadSetWorker*.
 
+*Before*:
 
+```
+struct miniset {
+	struct arraylist *head, *tail;
+	double sy, syy;
+	unsigned n;
+	struct miniset *next;
+};
+
+static void *
+ReadSetWorker(void *readsetworker_context)
+{
+ 	struct readsetworker_context *context = readsetworker_context;
+	struct miniset *ms = context->m = NewMiniSet();
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+	double d;
+	int line = 0;
+	....
+	
+	return NULL;
+}
+
+static void *
+ReadSet(void *readset_context)
+{
+   ... 
+   double *sp = s->points;		
+   
+   for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {		
+	for (struct arraylist *al = ms->head; al != NULL; al = al->next) {			
+		memcpy(sp, al->points, al->n * sizeof *sp);	
+		sp += al->n;	
+	}	
+  }
+  ..
+  ....
+```
+
+*After*:
+
+```
+struct miniset {
+	struct arraylist *head, *tail;
+	double *points;
+	double sy, syy;
+	unsigned n;
+	struct miniset *next;
+};
+
+static void *
+ReadSetWorker(void *readsetworker_context)
+{
+	struct readsetworker_context *context = readsetworker_context;
+	struct miniset *ms = context->m = NewMiniSet();
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+	double d, *points;
+	int line = 0;
+	....
+	points = ms->points = malloc(ms->n * sizeof *points);
+
+	for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
+		memcpy(points, al->points, al->n * sizeof *points);
+		points += al->n;
+	}
+	
+	return NULL;
+}
+
+static void *
+ReadSet(void *readset_context)
+{
+   ... 
+   double *sp = s->points;		
+   
+   for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
+		memcpy(sp, ms->points, ms->n * sizeof *sp);
+   }
+  ..
+  ....
+	
+```
 
 ### 4. Implement integer mode
 
