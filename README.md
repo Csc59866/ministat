@@ -135,7 +135,9 @@ main(int argc, char **argv)
 ```
 
 <p><i>strtod_fast()</i> converts string to double, use FE_TONEAREST mode</p>
+
 *After*:
+
 ```
 	d = strtod_fast(t, &p);
 	if (strcspn(p, context->file->delim))
@@ -167,17 +169,17 @@ main(int argc, char **argv)
 ### 2. Validate performance improvements and Visualizations
 - Original ministat vs. with-optimizations 1.a., 1.e., and 1.a.+ 1.e.
 <p><strong> Linear Scale </strong></p>
-<img src="/images/linear_scale_1.png" />
+<img src="/images/linear_scale_1.png" width="70%" />
 
 <p><strong> Logarithmic Scale </strong></p>
-<img src="/images/logarithmic_scale_1.png"/> 
+<img src="/images/logarithmic_scale_1.png" width="70%" /> 
 
 - Original ministat vs. with parallel file reading and parsing (4 threads). 
 <p><strong> Linear Scale </strong></p>
-<img src="/images/linear_scale_4_threads.png" />
+<img src="/images/linear_scale_4_threads.png" width="70%" />
 
 <p><strong> Logarithmic Scale </strong></p>
-<img src="/images/logarithmic_scale_4_threads.png"/> 
+<img src="/images/logarithmic_scale_4_threads.png" width="70%" /> 
 
 
 
