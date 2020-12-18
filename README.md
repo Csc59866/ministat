@@ -43,7 +43,7 @@ AddPoint(struct dataset *ds, double a)
 
 ```
 
-- [x] b. Use an_qsort to implement a final merge sort.
+- [x] b. Use *an_qsort* to implement a final merge sort.
 <p>: Implement <i>#include "an_qsort.inc"</i></p>
 
 *Before*:
@@ -149,13 +149,84 @@ main(int argc, char **argv)
 - [x] e. Implement a raw I/O interface using read, write, open and close.
 <p>: Provide real timing data demonstrating the new parsing is better. Benchmark against multiple block sizes. Generate visualizations.</p>
 
-*Before*:
+*After*:
+
 ```
+// requires #include <fcntl.h>
+static struct dataset *
+ReadSet(const char *n, int column, const char *delim)
+{
+   int f;
+   char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+   struct dataset *s;
+   double d;
+   int line;
+   int i;
+   int bytes_read;
+   size_t offset = 0;
+ 
+   if (n == NULL) {
+       f = STDIN_FILENO;
+       n = "<stdin>";
+   } else if (!strcmp(n, "-")) {
+       f = STDIN_FILENO;
+       n = "<stdin>";
+   } else {
+       f = open(n, O_RDONLY);
+   }
+   if (f == -1)
+       err(1, "Cannot open %s", n);
+   s = NewSet();
+   s->name = strdup(n);
+   line = 0;
+   for (;;) {
+       bytes_read = read(f, buf, sizeof buf - 1);
+ 
+       if (bytes_read <= 0) {
+           break;
+       }
+ 
+       buf[bytes_read] = '\0';
+       char *c = buf;
+       char *str_start = c;
+ 
+       for (; *c != '\0'; ++c) {
+           if (*c == '\n') {
+               line++;
+               *c = '\0';
+               strcpy(str + offset, str_start);
+               offset = 0;
+               i = strlen(str);
+ 
+               for (i = 1, t = strtok(str, delim);
+                   t != NULL && *t != '#';
+                   i++, t = strtok(NULL, delim)) {
+                   if (i == column)
+                       break;
+               }
+               if (t == NULL || *t == '#')
+                   continue;
+ 
+               d = strtod(t, &p);
+               if (p != NULL && *p != '\0')
+                   err(2, "Invalid data on line %d in %s\n", line, n);
+               if (*str != '\0')
+                   AddPoint(s, d);
+ 
+               str_start = c + 1;
+           }
+       }
+ 
+       if (buf[bytes_read - 1] != '\0') {
+           strcpy(str, str_start);
+           offset = strlen(str);
+       }
+   }
+   ....
+}
+
 ```
 
-*After*:
-```
-```
 - [x] f. Implement more efficient string tokenization.
 <p>: Provide real timing data demonstrating the new parsing is better. Generate visualizations.</p>
 *Before*:
