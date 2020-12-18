@@ -43,7 +43,8 @@ AddPoint(struct dataset *ds, double a)
 
 ```
 
-- [x] b. Use an_qsort to implement a final merge sort.<p></p>
+- [x] b. Use an_qsort to implement a final merge sort.
+<p>: Implement <i>#include "an_qsort.inc"</i> </p>
 *Before*:
 ```
 static struct dataset *
@@ -80,22 +81,59 @@ ReadSet(void *readset_context)
 
 
 
-- [x] c. Implement a new option '-v' that emits verbose timing data.<p></p>
+- [x] c. Implement a new option '-v' that emits verbose timing data.
+<p>: Instead of implementing a new option '-v', we put <i>clock_gettime()</i> so tha twe can collect timing information that we're interested in optimizing and print it out.</p>
+```
+#include <time.h>
+...
+static void *
+ReadSet(void *readset_context)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	....
+	..
+	clock_gettime(CLOCK_MONOTONIC, &stop);
+	...	
+}
+
+```
+- [x] d. Implement an alternative *strtod* function.
+<p>Implemented <i>#include "dtoa/strtod-lite.c"</i> </p>
 *Before*:
 ```
-```
+static struct dataset *
+ReadSet(const char *n, int column, const char *delim)
+{
+		...
+		.....
+		d = strtod(t, &p);
+		if (p != NULL && *p != '\0')
+			err(2, "Invalid data on line %d in %s\n", line, n);
+		if (*buf != '\0')
+			AddPoint(s, d);
+			
+}
 
+int
+main(int argc, char **argv)
+{
+...
+....
+	case 'c':
+		a = strtod(optarg, &p);
+...
+
+}
+
+```
+<p><i>strtod_fast()</i> converts string to double, use FE_TONEAREST mode</p>
 *After*:
 ```
-```
-- [x] d. Implement an alternative strtod function.
-<p>: Provide real timing data demonstrating that the new strtod function is better. Generate visualizatinos.</p>
-*Before*:
-```
-```
-
-*After*:
-```
+	d = strtod_fast(t, &p);
+	if (strcspn(p, context->file->delim))
+		err(2, "Invalid data on line %d in %s\n", line, context->file->n);
+	if (*str != '\0')
+		AddPoint(ms, d);
 ```
 
 
