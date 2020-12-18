@@ -7,7 +7,7 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 - [x] a. Implement a new data structure for inserting new data points.
 <p>: Initially, change the algorithm to just use **realloc** without using calloc or memcpy.</p>
 
-Before:
+*Before*:
 ```
 static void
 AddPoint(struct dataset *ds, double a)
@@ -27,7 +27,7 @@ AddPoint(struct dataset *ds, double a)
 }
 ```
 
-After:
+*After*:
 ```
 static void
 AddPoint(struct dataset *ds, double a)
@@ -44,18 +44,79 @@ AddPoint(struct dataset *ds, double a)
 ```
 
 - [x] b. Use an_qsort to implement a final merge sort.
+*Before*:
+```
+static struct dataset *
+ReadSet(const char *n, int column, const char *delim)
+{
+	...
+	.....
+	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	..
+
+}
+```
+
+*After*:
+```
+static void *
+ReadSet(void *readset_context)
+{
+	...
+	......
+	
+	s->points = malloc(s->n * sizeof *s->points);
+	double *sp = s->points;
+
+	for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
+		memcpy(sp, ms->points, ms->n * sizeof *sp);
+	}
+
+	an_qsort_C(s->points, s->n);
+	
+	...
+}	
+```
+
+
 
 - [x] c. Implement a new option '-v' that emits verbose timing data.
+*Before*:
+```
+```
 
+*After*:
+```
+```
 - [x] d. Implement an alternative strtod function.
 <p>: Provide real timing data demonstrating that the new strtod function is better. Generate visualizatinos.</p>
+*Before*:
+```
+```
+
+*After*:
+```
+```
+
 
 - [x] e. Implement a raw I/O interface using read, write, open and close.
 <p>: Provide real timing data demonstrating the new parsing is better. Benchmark against multiple block sizes. Generate visualizations.</p>
+*Before*:
+```
+```
 
+*After*:
+```
+```
 - [x] f. Implement more efficient string tokenization.
 <p>: Provide real timing data demonstrating the new parsing is better. Generate visualizations.</p>
+*Before*:
+```
+```
 
+*After*:
+```
+```
 
 ### 2. Validate performance improvements
 
