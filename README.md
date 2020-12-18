@@ -103,7 +103,7 @@ ReadSet(void *readset_context)
 ```
 
 - [x] d. Implement an alternative *strtod* function.
-<p>Implemented <i>#include "dtoa/strtod-lite.c"</i> </p>
+<p>: Implemented <i>#include "dtoa/strtod-lite.c"</i> </p>
 
 *Before*:
 
