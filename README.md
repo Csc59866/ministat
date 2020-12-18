@@ -226,16 +226,131 @@ ReadSet(const char *n, int column, const char *delim)
 ```
 
 - [x] f. Implement more efficient string tokenization.
-<p>: Provide real timing data demonstrating the new parsing is better. Generate visualizations.</p>
+<p>: Provide real timing data demonstrating the new parsing is better. We replaced strtok with <i>strsep</i> and then we replaced strsep with <i>strcspn</i> again.(strtok() -> strsep() -> strcspn()) </p>
 
 *Before*:
 
 ```
+static void *
+ReadSet(const char *n, int column, const char *delim)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	int f;
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+	struct dataset *s;
+	double d;
+	int line;
+	...
+	.....
+	*c = '\0';
+	strcpy(str + offset, str_start);
+	offset = 0;
+	i = strlen(str);
+	
+	for (i = 1, t = strtok(str, delim);
+		t != NULL && *t != '#';
+		i++, t = strtok(NULL, delim)) {
+		if (i == column)
+			break;
+	}
+	....
+	err(2, "Invalid data on line %d in %s\n", line, n);
+	
+	if (*str != '\0')
+		AddPoint(s, d);
+	
+	str_start = c + 1;
+    }
+	.....
+	
+}
+
 ```
 
-*After*:
+*After(strtok() -> strsep())*:
 
 ```
+static void *
+ReadSet(const char *n, int column, const char *delim)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	int f;
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t, *str_0;
+	struct dataset *s;
+	double d;
+	int line;
+	...
+	.....
+	*c = '\0';
+	strcpy(str + offset, str_start);
+	offset = 0;
+	str_start = c + 1;
+	str_0 = str;
+	
+	for (i = 1, t = strsep(&str_0, delim);
+		t != NULL && *t != '#';
+		i++, t = strsep(&str_0, delim)) {
+		if (i == column)
+			break;
+	}
+	if (t == NULL || *t == '#')
+		continue;
+	
+	d = strtod_fast(t, &p);
+	if (p != NULL && *p != '\0')
+		err(2, "Invalid data on line %d in %s\n", line, n);
+	
+	if (*str != '\0')
+		AddPoint(s, d);
+
+    }
+	.....
+	
+}
+```
+
+*After(strsep() -> strcspn())*:
+
+```
+static void *
+ReadSet(const char *n, int column, const char *delim)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	int f;
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+	struct dataset *s;
+	double d;
+	int line;
+	...
+	.....
+	*c = '\0';
+	strcpy(str + offset, str_start);
+	offset = 0;
+	str_start = c + 1;
+	str_0 = str;
+	
+	for(i = 1, t = p = str; *t != '#'; i++){
+		t = p;
+		p += strcspn(p, delim);
+		if (*p != '\0')
+			p++;
+		if (i == column)
+			break;
+	}
+	if (t == p || *t == '#')
+		continue;
+		
+	d = strtod_fast(t, &p);
+	if (strcspn(p, delim))
+		err(2, "Invalid data on line %d in %s\n", line, n);
+	
+	if (*str != '\0')
+		AddPoint(s, d);
+
+    }
+	.....
+	
+}
 ```
 
 ### 2. Validate performance improvements and Visualizations
