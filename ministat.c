@@ -620,31 +620,16 @@ Merge(double *points, size_t start, size_t mid, size_t end)
 	memcpy(origin, sorted, n * sizeof *origin);
 }
 
-static void
-MergeSort(double *points, size_t start, size_t end)
-{
-	if (start < end - 1) {
-		size_t mid = (start + end) / 2;
-		MergeSort(points, start, mid);
-		MergeSort(points, mid, end);
-		Merge(points, start, mid, end);
-	}
-}
-
-struct mergesort_context {
+struct sort_context {
 	double *points;
 	size_t start, end;
 };
 
 static void *
-ParallelMergeSort(void *mergesort_context)
+Sorter(void *sort_context)
 {
-	struct mergesort_context* context = mergesort_context;
-
-	if (context->start < context->end) {
-		MergeSort(context->points, context->start, context->end);
-	}
-
+	struct sort_context* context = sort_context;
+	an_qsort_C(context->points + context->start, context->end - context->start);
 	return NULL;
 }
 
@@ -684,7 +669,7 @@ ReadSet(void *readset_context)
 	ctx_end = share;
 
 	struct readsetworker_context *workers[READSET_THREAD_COUNT];
-	struct mergesort_context *sorters[READSET_THREAD_COUNT];
+	struct sort_context *sorters[READSET_THREAD_COUNT];
 	pthread_t threads[READSET_THREAD_COUNT];
 	pthread_t *t = threads;
 	char candidate;
@@ -760,15 +745,15 @@ ReadSet(void *readset_context)
 			leftover = 0;
 		}
 
-		struct mergesort_context *merger_context = sorters[i] = malloc(
+		struct sort_context *merger_context = sorters[i] = malloc(
 			sizeof *merger_context
 		);
 		merger_context->points = s->points;
 		merger_context->start = ctx_start;
 		merger_context->end = ctx_end;
 
-		if (pthread_create(t++, NULL, ParallelMergeSort, merger_context) != 0) {
-			err(1, "Failed to create a ParallelMergeSort thread");
+		if (pthread_create(t++, NULL, Sorter, merger_context) != 0) {
+			err(1, "Failed to create a Sorter thread");
 		}
 
 		ctx_start = ctx_end;
@@ -781,7 +766,7 @@ ReadSet(void *readset_context)
 
 	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
 		if (pthread_join(*t++, NULL) != 0) {
-			err(1, "Failed to join a ParallelMergeSort thread");
+			err(1, "Failed to join a Sorter thread");
 		}
 	}
 
