@@ -174,59 +174,35 @@ NewArrayList(void)
 	return al;
 }
 
-struct miniset {
-	struct arraylist *head, *tail;
+struct dataset {
+	char *name;
+	double *points;
 	double sy, syy;
 	unsigned n;
-	struct miniset *next;
+	struct arraylist *head, *tail;
 };
 
-struct miniset *
-NewMiniSet(void)
-{
-	struct miniset *ms;
-
-	ms = calloc(1, sizeof *ms);
-	ms->tail = ms->head = NewArrayList();
-	return(ms);
-}
-
 static void
-AddPoint(struct miniset *ms, double a)
+AddPoint(struct dataset *ds, double a)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
-	if (ms->tail->n >= ARRAYLIST_SIZE) {
-		ms->tail = ms->tail->next = NewArrayList();
+	if (ds->tail->n >= ARRAYLIST_SIZE) {
+		ds->tail = ds->tail->next = NewArrayList();
 	}
-	ms->tail->points[ms->tail->n++] = a;
-	ms->sy += a;
-	ms->syy += a * a;
-	ms->n += 1;
+	ds->tail->points[ds->tail->n++] = a;
+	ds->sy += a;
+	ds->syy += a * a;
+	ds->n += 1;
 	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
 	ts[0] = elapsed_us(&start, &stop);
 }
 
-struct dataset {
-	char *name;
-	struct miniset *head, *tail;
-	double *points;
-	double sy, syy;
-	unsigned n;
-};
-
 static void
-AddMiniSet(struct dataset *ds, struct miniset *ms)
+DataSetUnion(struct dataset *destination, struct dataset *source)
 {
-	ds->sy += ms->sy;
-	ds->syy += ms->syy;
-	ds->n += ms->n;
-
-	if (ds->head) {
-		ds->tail = ds->tail->next = ms;
-	}
-	else {
-		ds->tail = ds->head = ms;
-	}
+	destination->sy += source->sy;
+	destination->syy += source->syy;
+	destination->n += source->n;
 }
 
 static struct dataset *
@@ -515,18 +491,20 @@ struct readset_context {
 
 struct readsetworker_context {
 	struct readset_context *file;
-	size_t start, end;
-	struct dataset *s;
-	struct miniset *m;
+	size_t start, end; /* file */
+	size_t points_start, points_end; /* s->points */
+	struct dataset *s; /* parent */
+	struct dataset *m; /* thread */
 };
 
 static void *
 ReadSetWorker(void *readsetworker_context)
 {
 	struct readsetworker_context *context = readsetworker_context;
-	struct miniset *ms = context->m = NewMiniSet();
+	struct dataset *ds = context->m = NewDataSet();
+	ds->tail = ds->head = NewArrayList();
 	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
-	double d;
+	double d, *point;
 	int line = 0;
 	int i;
 	int bytes_read;
@@ -574,7 +552,7 @@ ReadSetWorker(void *readsetworker_context)
 					err(2, "Invalid data on line %d in %s\n", line,
 						context->file->n);
 				if (*str != '\0')
-					AddPoint(ms, d);
+					AddPoint(ds, d);
 			}
 		}
 
@@ -583,6 +561,15 @@ ReadSetWorker(void *readsetworker_context)
 			offset = strlen(str);
 		}
 	}
+
+	point = ds->points = malloc(ds->n * sizeof *ds->points);
+
+	for (struct arraylist *al = ds->head; al != NULL; al = al->next) {
+		memcpy(point, al->points, al->n * sizeof *point);
+		point += al->n;
+	}
+
+	an_qsort_C(ds->points, ds->n);
 
 	return NULL;
 }
@@ -618,19 +605,6 @@ Merge(double *points, size_t start, size_t mid, size_t end)
 	}
 
 	memcpy(origin, sorted, n * sizeof *origin);
-}
-
-struct sort_context {
-	double *points;
-	size_t start, end;
-};
-
-static void *
-Sorter(void *sort_context)
-{
-	struct sort_context* context = sort_context;
-	an_qsort_C(context->points + context->start, context->end - context->start);
-	return NULL;
 }
 
 static void *
@@ -669,7 +643,6 @@ ReadSet(void *readset_context)
 	ctx_end = share;
 
 	struct readsetworker_context *workers[READSET_THREAD_COUNT];
-	struct sort_context *sorters[READSET_THREAD_COUNT];
 	pthread_t threads[READSET_THREAD_COUNT];
 	pthread_t *t = threads;
 	char candidate;
@@ -708,12 +681,20 @@ ReadSet(void *readset_context)
 		}
 	}
 
+	size_t points_start, points_end;
+	points_start = points_end = 0;
+
 	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
 		if (pthread_join(*t++, NULL) != 0) {
 			err(1, "Failed to join a ReadSetWorker thread");
 		}
 
-		AddMiniSet(s, workers[i]->m);
+		workers[i]->points_start = points_start;
+		points_end = points_start + workers[i]->m->n;
+		workers[i]->points_end = points_end;
+		points_start = points_end;
+
+		DataSetUnion(s, workers[i]->m);
 	}
 
 	close(f);
@@ -725,50 +706,17 @@ ReadSet(void *readset_context)
 	}
 
 	s->points = malloc(s->n * sizeof *s->points);
-	double *sp = s->points;
+	double *point = s->points;
 
-	for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
-		for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
-			memcpy(sp, al->points, al->n * sizeof *sp);
-			sp += al->n;
-		}
+	for (i = 0; i < READSET_THREAD_COUNT; ++i) {
+		memcpy(point, workers[i]->m->points, workers[i]->m->n * sizeof *point);
+		point += workers[i]->m->n;
 	}
 
 	share = s->n / READSET_THREAD_COUNT;
 	leftover = s->n %  READSET_THREAD_COUNT;
 	ctx_start = 0;
 	ctx_end = share;
-
-	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
-		if (i == 0 && leftover) {
-			ctx_end += leftover;
-			leftover = 0;
-		}
-
-		struct sort_context *merger_context = sorters[i] = malloc(
-			sizeof *merger_context
-		);
-		merger_context->points = s->points;
-		merger_context->start = ctx_start;
-		merger_context->end = ctx_end;
-
-		if (pthread_create(t++, NULL, Sorter, merger_context) != 0) {
-			err(1, "Failed to create a Sorter thread");
-		}
-
-		ctx_start = ctx_end;
-		ctx_end += share;
-
-		if (ctx_end > s->n) {
-			ctx_end = s->n;
-		}
-	}
-
-	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
-		if (pthread_join(*t++, NULL) != 0) {
-			err(1, "Failed to join a Sorter thread");
-		}
-	}
 
 	for (
 			j = 0, k = log2(READSET_THREAD_COUNT), half_step = 1, step = 2;
@@ -778,9 +726,9 @@ ReadSet(void *readset_context)
 		for (i = 0; i < READSET_THREAD_COUNT; i += step) {
 			Merge(
 				s->points,
-				sorters[i]->start,
-				sorters[i + half_step]->start,
-				sorters[i + step - 1]->end
+				workers[i]->points_start,
+				workers[i + half_step]->points_start,
+				workers[i + step - 1]->points_end
 			);
 		}
 
