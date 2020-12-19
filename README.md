@@ -599,6 +599,16 @@ sys     0m0.356s
 ```
 ```
 
+### Final Analysis
+
+- What improved from the base line?
+
+- What were most beneficial optimizations?
+
+- What were least effective?
+
+- What challenges you encountered?
+
 
 
 
