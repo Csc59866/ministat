@@ -11,6 +11,7 @@
 
 #include "dtoa/strtod-lite.c"
 #include "an_qsort.inc"
+#include "an_qsortInt.inc"
 #include <err.h>
 #include <fcntl.h>
 #include <math.h>
@@ -166,10 +167,25 @@ struct arraylist {
 	struct arraylist *next;
 };
 
+struct arraylistInt {
+	int *points;
+	unsigned n;
+	struct arraylistInt *next;
+};
+
+
 struct arraylist *
 NewArrayList(void)
 {
 	struct arraylist *al = calloc(1, sizeof *al);
+	al->points = calloc(ARRAYLIST_SIZE, sizeof *al->points);
+	return al;
+}
+
+struct arraylistInt *
+NewArrayListInt(void)
+{
+	struct arraylistInt *al = calloc(1, sizeof *al);
 	al->points = calloc(ARRAYLIST_SIZE, sizeof *al->points);
 	return al;
 }
@@ -182,6 +198,14 @@ struct miniset {
 	struct miniset *next;
 };
 
+struct minisetInt {
+	struct arraylistInt *head, *tail;
+	int *points;
+	int sy, syy;
+	unsigned n;
+	struct minisetInt *next;
+};
+
 struct miniset *
 NewMiniSet(void)
 {
@@ -192,12 +216,37 @@ NewMiniSet(void)
 	return(ms);
 }
 
+struct minisetInt *
+NewMiniSetInt(void)
+{
+	struct minisetInt *ms;
+
+	ms = calloc(1, sizeof *ms);
+	ms->tail = ms->head = NewArrayListInt();
+	return(ms);
+}
+
 static void
 AddPoint(struct miniset *ms, double a)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	if (ms->tail->n >= ARRAYLIST_SIZE) {
 		ms->tail = ms->tail->next = NewArrayList();
+	}
+	ms->tail->points[ms->tail->n++] = a;
+	ms->sy += a;
+	ms->syy += a * a;
+	ms->n += 1;
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
+	ts[0] = elapsed_us(&start, &stop);
+}
+
+static void
+AddPointInt(struct minisetInt *ms, double a)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	if (ms->tail->n >= ARRAYLIST_SIZE) {
+		ms->tail = ms->tail->next = NewArrayListInt();
 	}
 	ms->tail->points[ms->tail->n++] = a;
 	ms->sy += a;
@@ -217,7 +266,7 @@ struct dataset {
 
 struct intDataset {
 	char *name;
-	struct miniset *head, *tail;
+	struct minisetInt *head, *tail;
 	int *points;
 	int sy, syy;
 	unsigned n;
@@ -225,6 +274,21 @@ struct intDataset {
 
 static void
 AddMiniSet(struct dataset *ds, struct miniset *ms)
+{
+	ds->sy += ms->sy;
+	ds->syy += ms->syy;
+	ds->n += ms->n;
+
+	if (ds->head) {
+		ds->tail = ds->tail->next = ms;
+	}
+	else {
+		ds->tail = ds->head = ms;
+	}
+}
+
+static void
+AddMiniSetInt(struct intDataset *ds, struct minisetInt *ms)
 {
 	ds->sy += ms->sy;
 	ds->syy += ms->syy;
@@ -264,8 +328,23 @@ Min(struct dataset *ds)
 	return (ds->points[0]);
 }
 
+static int
+MinInt(struct intDataset *ds)
+{
+
+	return (ds->points[0]);
+}
+
+
 static double
 Max(struct dataset *ds)
+{
+
+	return (ds->points[ds->n - 1]);
+}
+
+static int
+MaxInt(struct intDataset *ds)
 {
 
 	return (ds->points[ds->n - 1]);
@@ -279,7 +358,21 @@ Avg(struct dataset *ds)
 }
 
 static double
+AvgInt(struct intDataset *ds)
+{
+
+	return(ds->sy / ds->n);
+}
+
+static double
 Median(struct dataset *ds)
+{
+
+	return (ds->points[ds->n / 2]);
+}
+
+static double
+MedianInt(struct intDataset *ds)
 {
 
 	return (ds->points[ds->n / 2]);
@@ -292,11 +385,25 @@ Var(struct dataset *ds)
 	return (ds->syy - ds->sy * ds->sy / ds->n) / (ds->n - 1.0);
 }
 
+static int
+VarInt(struct intDataset *ds)
+{
+
+	return (ds->syy - ds->sy * ds->sy / ds->n) / (ds->n - 1);
+}
+
 static double
 Stddev(struct dataset *ds)
 {
 
 	return sqrt(Var(ds));
+}
+
+static int
+StddevInt(struct intDataset *ds)
+{
+
+	return sqrt(VarInt(ds));
 }
 
 static void
@@ -312,6 +419,15 @@ Vitals(struct dataset *ds, int flag)
 
 	printf("%c %3d %13.8g %13.8g %13.8g %13.8g %13.8g", symbol[flag],
 	    ds->n, Min(ds), Max(ds), Median(ds), Avg(ds), Stddev(ds));
+	printf("\n");
+}
+
+static void
+VitalsInt(struct intDataset *ds, int flag)
+{
+
+	printf("%c %3d %13.8g %13.8g %13.8g %13.8g %13.8g", symbol[flag],
+	    ds->n, MinInt(ds), MaxInt(ds), MedianInt(ds), AvgInt(ds), StddevInt(ds));
 	printf("\n");
 }
 
@@ -338,6 +454,36 @@ Relative(struct dataset *ds, struct dataset *rs, int confidx)
 		printf("Difference at %.1f%% confidence\n", studentpct[confidx]);
 		printf("	%g +/- %g\n", d, e);
 		printf("	%g%% +/- %g%%\n", d * 100 / Avg(rs), e * 100 / Avg(rs));
+		printf("	(Student's t, pooled s = %g)\n", spool);
+	} else {
+		printf("No difference proven at %.1f%% confidence\n",
+		    studentpct[confidx]);
+	}
+}
+
+static void
+RelativeInt(struct intDataset *ds, struct intDataset *rs, int confidx)
+{
+	double spool, s, d, e, t;
+	int i;
+
+	i = ds->n + rs->n - 2;
+	if (i > NSTUDENT)
+		t = student[0][confidx];
+	else
+		t = student[i][confidx];
+	spool = (ds->n - 1) * VarInt(ds) + (rs->n - 1) * VarInt(rs);
+	spool /= ds->n + rs->n - 2;
+	spool = sqrt(spool);
+	s = spool * sqrt(1 / ds->n + 1 / rs->n);
+	d = AvgInt(ds) - AvgInt(rs);
+	e = t * s;
+
+	if (fabs(d) > e) {
+
+		printf("Difference at %.1f%% confidence\n", studentpct[confidx]);
+		printf("	%g +/- %g\n", d, e);
+		printf("	%g%% +/- %g%%\n", d * 100 / AvgInt(rs), e * 100 / AvgInt(rs));
 		printf("	(Student's t, pooled s = %g)\n", spool);
 	} else {
 		printf("No difference proven at %.1f%% confidence\n",
@@ -532,11 +678,27 @@ struct readset_context {
 	const char *delim;
 };
 
+struct readintset_context {
+	struct intDataset **multiset;
+	int index;
+	int fd; /* file descriptor */
+	const char *n; /* filename */
+	int column;
+	const char *delim;
+};
+
 struct readsetworker_context {
 	struct readset_context *file;
 	size_t start, end;
 	struct dataset *s;
 	struct miniset *m;
+};
+
+struct readintsetworker_context {
+	struct readintset_context *file;
+	size_t start, end;
+	struct intDataset *s;
+	struct minisetInt *m;
 };
 
 static void *
@@ -606,6 +768,80 @@ ReadSetWorker(void *readsetworker_context)
 	points = ms->points = malloc(ms->n * sizeof *points);
 
 	for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
+		memcpy(points, al->points, al->n * sizeof *points);
+		points += al->n;
+	}
+
+	return NULL;
+}
+
+static void *
+ReadIntSetWorker(void *readintsetworker_context)
+{
+	struct readintsetworker_context *context = readintsetworker_context;
+	struct minisetInt *ms = context->m = NewMiniSetInt();
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
+	int d, *points;
+	int line = 0;
+	int i;
+	int bytes_read;
+	off_t cursor = context->start;
+	size_t offset = 0;
+	size_t ctx_size, buflen;
+
+	for (;;) {
+		ctx_size = context->end - cursor + 1;
+		buflen = BUFSIZ <= ctx_size ? BUFSIZ : ctx_size;
+		bytes_read = pread(context->file->fd, buf, buflen - 1, cursor);
+
+		if (bytes_read <= 0) {
+			break;
+		}
+
+		cursor += bytes_read;
+		buf[bytes_read] = '\0';
+		char *c = buf;
+		char *str_start = c;
+
+		for (; *c != '\0'; ++c) {
+			if (*c == '\n') {
+				line++;
+				*c = '\0';
+				strcpy(str + offset, str_start);
+				offset = 0;
+				str_start = c + 1;
+
+				for (i = 1, t = p = str;
+					*t != '#';
+					i++) {
+					t = p;
+					p += strcspn(p, context->file->delim);
+					if (*p != '\0')
+						p++;
+					if (i == context->file->column)
+						break;
+				}
+				if (t == p || *t == '#')
+					continue;
+
+				d = strtod_fast(t, &p);
+				if (strcspn(p, context->file->delim))
+					err(2, "Invalid data on line %d in %s\n", line,
+						context->file->n);
+				if (*str != '\0')
+					AddPointInt(ms, d);
+			}
+		}
+
+		if (buf[bytes_read - 1] != '\0') {
+			strcpy(str, str_start);
+			offset = strlen(str);
+		}
+	}
+
+	points = ms->points = malloc(ms->n * sizeof *points);
+
+	for (struct arraylistInt *al = ms->head; al != NULL; al = al->next) {
 		memcpy(points, al->points, al->n * sizeof *points);
 		points += al->n;
 	}
@@ -720,6 +956,113 @@ ReadSet(void *readset_context)
 	return (s);
 }
 
+static void *
+ReadIntSet(void *readintset_context)
+{
+	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
+	struct readintset_context *context = readintset_context;
+	int f, i;
+	struct intDataset *s;
+	s = NewIntDataSet();
+	s->name = strdup(context->n);
+
+	if (context->n == NULL) {
+		f = STDIN_FILENO;
+		context->n = "<stdin>";
+	} else if (!strcmp(context->n, "-")) {
+		f = STDIN_FILENO;
+		context->n = "<stdin>";
+	} else {
+		f = open(context->n, O_RDONLY);
+	}
+	if (f == -1)
+		err(1, "Cannot open %s", context->n);
+
+	context->fd = f;
+
+	struct stat stat;
+	size_t share, share_actual, leftover, ctx_start, ctx_end;
+
+	fstat(f, &stat);
+	share = stat.st_size / READSET_THREAD_COUNT;
+	leftover = stat.st_size % READSET_THREAD_COUNT;
+	ctx_start = 0;
+	ctx_end = share;
+
+	struct readintsetworker_context *workers[READSET_THREAD_COUNT];
+	pthread_t threads[READSET_THREAD_COUNT];
+	pthread_t *t = threads;
+	size_t thread_count = 0;
+	char candidate;
+
+	for (i = 0; i < READSET_THREAD_COUNT; ++i) {
+		share_actual = share;
+
+		if (i == 0 && leftover) {
+			share_actual -= leftover;
+			ctx_end += leftover;
+			leftover = 0;
+		}
+
+		while (pread(f, &candidate, 1, ctx_end - 1)) {
+			if (candidate == '\n') {
+				break;
+			}
+
+			share_actual--;
+			ctx_end++;
+		}
+
+		struct readintsetworker_context *worker_context = workers[i] = malloc(
+			sizeof *worker_context
+		);
+		worker_context->file = context;
+		worker_context->start = ctx_start;
+		worker_context->end = ctx_end;
+		worker_context->s = s;
+
+		if (pthread_create(t++, NULL, ReadIntSetWorker, worker_context) != 0) {
+			err(1, "Failed to create a ReadIntSetWorker thread");
+		}
+
+		thread_count++;
+
+		ctx_start = ctx_end;
+		ctx_end += share_actual;
+	}
+
+	for (i = 0, t = threads; i < thread_count; ++i) {
+		if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Failed to join a ReadIntSetWorker thread");
+		}
+
+		AddMiniSetInt(s, workers[i]->m);
+	}
+
+	close(f);
+
+	if (s->n < 3) {
+		fprintf(stderr,
+		    "Dataset %s must contain at least 3 data points\n", context->n);
+		exit (2);
+	}
+
+	s->points = malloc(s->n * sizeof *s->points);
+	int *sp = s->points;
+
+	for (struct minisetInt *ms = s->head; ms != NULL; ms = ms->next) {
+		memcpy(sp, ms->points, ms->n * sizeof *sp);
+	}
+
+	an_qsort_D(s->points, s->n);
+
+	context->multiset[context->index] = s;
+
+	clock_gettime(CLOCK_MONOTONIC, &stop); //------------ time point stop ------------//
+	ts[1] = elapsed_us(&start, &stop);
+	return (s);
+}
+
 static void
 usage(char const *whine)
 {
@@ -748,6 +1091,7 @@ int
 main(int argc, char **argv)
 {
 	struct dataset *ds[7];
+	struct intDataset *dsInt[7];
 	int nds;
 	double a;
 	const char *delim = " \t";
@@ -837,7 +1181,18 @@ main(int argc, char **argv)
 		context.column = column;
 		context.delim = delim;
 
-		ReadSet((void *)&context);
+		if (flag_i) {
+			struct readintset_context contextInt;
+			contextInt.multiset = dsInt;
+			contextInt.index = 0;
+			contextInt.n = "-";
+			contextInt.column = column;
+			contextInt.delim = delim;
+
+			ReadIntSet((void *)&contextInt);
+		}
+
+		ReadSet((void *)&context);	
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
