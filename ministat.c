@@ -1116,7 +1116,7 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:v")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snqiw:v")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -1149,15 +1149,15 @@ main(int argc, char **argv)
 		case 's':
 			flag_s = 1;
 			break;
+		case 'i': 
+			flag_i = 1;
+			break;
 		case 'w':
 			termwidth = strtol(optarg, &p, 10);
 			if (p != NULL && *p != '\0')
 				usage("Invalid width, not a number.");
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
-			break;
-		case 'i': 
-			flag_i = 1;
 			break;
 		case 'v':
             flag_v = 1;
