@@ -612,11 +612,12 @@ ReadSet(void *readset_context)
 	context->fd = f;
 
 	struct stat stat;
-	size_t share, share_actual, leftover, ctx_start, ctx_end;
+	size_t byte_size, share, leftover, ctx_start, ctx_end;
 
 	fstat(f, &stat);
-	share = stat.st_size / READSET_THREAD_COUNT;
-	leftover = stat.st_size % READSET_THREAD_COUNT;
+	byte_size = stat.st_size;
+	share = byte_size / READSET_THREAD_COUNT;
+	leftover = byte_size % READSET_THREAD_COUNT;
 	ctx_start = 0;
 	ctx_end = share;
 
@@ -627,10 +628,7 @@ ReadSet(void *readset_context)
 	char candidate;
 
 	for (i = 0; i < READSET_THREAD_COUNT; ++i) {
-		share_actual = share;
-
 		if (i == 0 && leftover) {
-			share_actual -= leftover;
 			ctx_end += leftover;
 			leftover = 0;
 		}
@@ -640,7 +638,6 @@ ReadSet(void *readset_context)
 				break;
 			}
 
-			share_actual--;
 			ctx_end++;
 		}
 
@@ -659,7 +656,11 @@ ReadSet(void *readset_context)
 		thread_count++;
 
 		ctx_start = ctx_end;
-		ctx_end += share_actual;
+		ctx_end += share;
+
+		if (ctx_end > byte_size) {
+			ctx_end = byte_size;
+		}
 	}
 
 	for (i = 0, t = threads; i < thread_count; ++i) {
