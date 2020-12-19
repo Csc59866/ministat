@@ -587,12 +587,74 @@ ReadSetWorker(void *readsetworker_context)
 	return NULL;
 }
 
+static void
+Merge(double *points, size_t start, size_t mid, size_t end)
+{
+	size_t n, i;
+	double *x, *sorted;
+
+	double *first_half = points + start;
+	double *second_half = points + mid;
+	double *origin = first_half;
+	double *midpoint = second_half;
+	double *endpoint = points + end;
+
+	n = end - start;
+	sorted = malloc(n * sizeof *sorted);
+
+	for (i = 0, x = sorted; i < n; ++i) {
+		if (second_half >= endpoint) {
+			*(x++) = *(first_half++);
+		}
+		else if (first_half >= midpoint) {
+			*(x++) = *(second_half++);
+		}
+		else if (*first_half < *second_half) {
+			*(x++) = *(first_half++);
+		}
+		else {
+			*(x++) = *(second_half++);
+		}
+	}
+
+	memcpy(origin, sorted, n * sizeof *origin);
+}
+
+static void
+MergeSort(double *points, size_t start, size_t end)
+{
+	if (start < end - 1) {
+		size_t mid = (start + end) / 2;
+		MergeSort(points, start, mid);
+		MergeSort(points, mid, end);
+		Merge(points, start, mid, end);
+	}
+}
+
+struct mergesort_context {
+	double *points;
+	size_t start, end;
+};
+
+static void *
+ParallelMergeSort(void *mergesort_context)
+{
+	struct mergesort_context* context = mergesort_context;
+
+	if (context->start < context->end) {
+		MergeSort(context->points, context->start, context->end);
+	}
+
+	return NULL;
+}
+
 static void *
 ReadSet(void *readset_context)
 {
 	clock_gettime(CLOCK_MONOTONIC, &start); //------------ time point start ------------//
 	struct readset_context *context = readset_context;
-	int f, i;
+	int f;
+	size_t i, j, k, half_step, step;
 	struct dataset *s;
 	s = NewDataSet();
 	s->name = strdup(context->n);
@@ -622,9 +684,9 @@ ReadSet(void *readset_context)
 	ctx_end = share;
 
 	struct readsetworker_context *workers[READSET_THREAD_COUNT];
+	struct mergesort_context *sorters[READSET_THREAD_COUNT];
 	pthread_t threads[READSET_THREAD_COUNT];
 	pthread_t *t = threads;
-	size_t thread_count = 0;
 	char candidate;
 
 	for (i = 0; i < READSET_THREAD_COUNT; ++i) {
@@ -653,8 +715,6 @@ ReadSet(void *readset_context)
 			err(1, "Failed to create a ReadSetWorker thread");
 		}
 
-		thread_count++;
-
 		ctx_start = ctx_end;
 		ctx_end += share;
 
@@ -663,7 +723,7 @@ ReadSet(void *readset_context)
 		}
 	}
 
-	for (i = 0, t = threads; i < thread_count; ++i) {
+	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
 		if (pthread_join(*t++, NULL) != 0) {
 			err(1, "Failed to join a ReadSetWorker thread");
 		}
@@ -689,7 +749,59 @@ ReadSet(void *readset_context)
 		}
 	}
 
-	an_qsort_C(s->points, s->n);
+	share = s->n / READSET_THREAD_COUNT;
+	leftover = s->n %  READSET_THREAD_COUNT;
+	ctx_start = 0;
+	ctx_end = share;
+
+	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
+		if (i == 0 && leftover) {
+			ctx_end += leftover;
+			leftover = 0;
+		}
+
+		struct mergesort_context *merger_context = sorters[i] = malloc(
+			sizeof *merger_context
+		);
+		merger_context->points = s->points;
+		merger_context->start = ctx_start;
+		merger_context->end = ctx_end;
+
+		if (pthread_create(t++, NULL, ParallelMergeSort, merger_context) != 0) {
+			err(1, "Failed to create a ParallelMergeSort thread");
+		}
+
+		ctx_start = ctx_end;
+		ctx_end += share;
+
+		if (ctx_end > s->n) {
+			ctx_end = s->n;
+		}
+	}
+
+	for (i = 0, t = threads; i < READSET_THREAD_COUNT; ++i) {
+		if (pthread_join(*t++, NULL) != 0) {
+			err(1, "Failed to join a ParallelMergeSort thread");
+		}
+	}
+
+	for (
+			j = 0, k = log2(READSET_THREAD_COUNT), half_step = 1, step = 2;
+			j < k;
+			j++
+		) {
+		for (i = 0; i < READSET_THREAD_COUNT; i += step) {
+			Merge(
+				s->points,
+				sorters[i]->start,
+				sorters[i + half_step]->start,
+				sorters[i + step - 1]->end
+			);
+		}
+
+		half_step = step;
+		step *= 2;
+	}
 
 	context->multiset[context->index] = s;
 
