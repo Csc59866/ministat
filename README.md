@@ -362,7 +362,23 @@ ReadSet(const char *n, int column, const char *delim)
 ```
 
 ### Validate performance improvements and Visualizations
+#### Data Specification
+We are testing three main components in these graphs below:
+- timing data on various test file sizes (lines) during different stages of micro-optimizations
+- timing data on various test file sizes (lines) during different stages of paralellizations
+- timing data on various test file arguments given to files from origin ministat.c to improved ministat.c
+
+Using a test files generator file, included in our report, we generated 11 files. Starting from the smallest file with 2^16 lines, it will generate up to the biggest file size, 2^26 lines.
+
+__These numbers were executed with the *time utility* and using the following -q command:__
+	```
+	time ./ministat -q testfile ....
+	```
+
+#### Visualizations
 - Original ministat vs. with-optimizations 1.a - 1.f
+
+*timing data on various test file sizes (lines) during different stages of micro-optimizations*
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_1.png" width="70%" />
 
@@ -370,6 +386,8 @@ ReadSet(const char *n, int column, const char *delim)
 <img src="/images/logarithmic_scale_1.png" width="70%" /> 
 
 - Original ministat vs. with parallel file reading & parsing (4 threads) vs. with parallel file sorting
+
+*timing data on various test file sizes (lines) during different stages of paralellizations*
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_4_threads.png" width="70%" />
 
@@ -377,6 +395,8 @@ ReadSet(const char *n, int column, const char *delim)
 <img src="/images/logarithmic_scale_4_threads.png" width="70%" /> 
 
 - Timing data of original ministat vs. parallelized ministat
+
+*timing data on various test file arguments given to files from origin ministat.c to improved ministat.c*
 <p><strong> Linear Scale </strong></p>
 <img src="/images/parallelized_linear.png" width="70%" />
 
