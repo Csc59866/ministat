@@ -65,7 +65,7 @@ AddPoint(struct dataset *ds, double a)
 ```
 
 - [x] b. Use *an_qsort* to implement a final merge sort.
-<p>: Implemented <i>#include "an_qsort.inc"</i></p>
+<p>: Implemented <code>#include "an_qsort.inc"</code></p>
 
 *Before*:
 
@@ -104,7 +104,7 @@ ReadSet(void *readset_context)
 ```
 
 - [x] c. Implement a new option '-v' that emits verbose timing data.
-<p>: Instead of implementing a new option '-v', we put <i>clock_gettime()</i> so that we can collect timing information that we're interested in optimizing.</p>
+<p>: Instead of implementing a new option '-v', we put <code>clock_gettime()</code> so that we can collect timing information that we're interested in optimizing.</p>
 
 *After*:
 
@@ -124,7 +124,7 @@ ReadSet(void *readset_context)
 ```
 
 - [x] d. Implement an alternative *strtod* function.
-<p>: Implemented <i>#include "dtoa/strtod-lite.c"</i>. <i>strtod_fast()</i> converts string to double, use FE_TONEAREST mode</p>
+<p>: Implemented <code>#include "dtoa/strtod-lite.c"</code>. <code>strtod_fast()</code> converts string to double, use FE_TONEAREST mode</p>
 
 *Before*:
 
@@ -247,7 +247,7 @@ ReadSet(const char *n, int column, const char *delim)
 ```
 
 - [x] f. Implement more efficient string tokenization.
-<p>: Provide real timing data demonstrating the new parsing is better. We replaced strtok with <i>strsep</i> and then we replaced strsep with <i>strcspn</i> again.(strtok() -> strsep() -> strcspn()) </p>
+<p>: Provide real timing data demonstrating the new parsing is better. We replaced strtok with <code>strsep</code> and then we replaced strsep with <code>strcspn</code> again.(strtok() -> strsep() -> strcspn()) </p>
 
 *Before*:
 
