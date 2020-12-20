@@ -64,7 +64,7 @@
 #endif
 
 #ifndef AN_QSORT_TYPE
-#define AN_QSORT_TYPE int
+#define AN_QSORT_TYPE long int
 #endif
 
 #ifndef AN_QSORT_CMP
