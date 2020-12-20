@@ -2,12 +2,12 @@
 A small tool to do the statistics legwork on benchmarks etc. The goal is to optimize ministat to take advantage modern CPU features and compiler optimizations.
 
 ## Table of Contents
-- [Implement micro-optimzations](###1.-Implement-micro-optimizations)
-- [Validate performance improvements and Visualizations](###2.-Validate-performance-improvements-and-Visualizations)
-- [Switch to a multi-threaded architecture](###3.-Switch-to-a-multi-threaded-architecture)
-- [Implement parallel sorting and quicksort ](###4.-Implement-parallel-sorting-and-quicksort)
-- [Final Analysis](###5.-Final-Analysis)
-- [Contributors](##Contributors)
+- [Implement micro-optimzations](#1.-Implement-micro-optimizations)
+- [Validate performance improvements and Visualizations](#2.-Validate-performance-improvements-and-Visualizations)
+- [Switch to a multi-threaded architecture](#3.-Switch-to-a-multi-threaded-architecture)
+- [Implement parallel sorting and quicksort ](#4.-Implement-parallel-sorting-and-quicksort)
+- [Final Analysis](#5.-Final-Analysis)
+- [Contributors](#Contributors)
 
 ## Milestones
 
