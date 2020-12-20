@@ -368,6 +368,12 @@ ReadSet(const char *n, int column, const char *delim)
 <p><strong> Logarithmic Scale </strong></p>
 <img src="/images/logarithmic_scale_4_threads.png" width="70%" /> 
 
+- Timing data of original ministat vs. parallelized ministat
+<p><strong> Linear Scale </strong></p>
+<img src="/images/parallelized_linear.png" width="70%" />
+
+<p><strong> Logarithmic Scale </strong></p>
+<img src="/images/parallelized_log.png" width="70%" /> 
 
 
 ### 3. Switch to a multi-threaded architecture 
