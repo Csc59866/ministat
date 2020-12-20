@@ -2,7 +2,7 @@
 A small tool to do the statistics legwork on benchmarks etc. The goal is to optimize ministat to take advantage modern CPU features and compiler optimizations.
 
 ## Table of Contents
-- [Implement micro-optimzations](#1.-implement-micro-optimizations)
+- [Implement micro-optimzations](#implement-micro-optimizations)
 - [Validate performance improvements and Visualizations](#2.-validate-performance-improvements-and-visualizations)
 - [Switch to a multi-threaded architecture](#3.-switch-to-a-multi-threaded-architecture)
 - [Implement parallel sorting and quicksort ](#4.-implement-parallel-sorting-and-quicksort)
@@ -11,7 +11,7 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 
 ## Milestones
 
-### 1. Implement micro-optimizations
+### Implement micro-optimizations
 - [x] a. Implement a new data structure for inserting new data points.
 <p>: Initially, change the algorithm to just use <strong>realloc</strong> without using calloc or memcpy.</p>
 
