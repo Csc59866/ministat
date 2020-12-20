@@ -1,9 +1,17 @@
 # ministat
 A small tool to do the statistics legwork on benchmarks etc. The goal is to optimize ministat to take advantage modern CPU features and compiler optimizations.
 
-## Milestones 
+## Table of Contents
+- [Implement micro-optimzations](###1.-Implement-micro-optimizations)
+- [Validate performance improvements and Visualizations](###2.-Validate-performance-improvements-and-Visualizations)
+- [Switch to a multi-threaded architecture](###3.-Switch-to-a-multi-threaded-architecture)
+- [Implement parallel sorting and quicksort ](###4.-Implement-parallel-sorting-and-quicksort)
+- [Final Analysis](###5.-Final-Analysis)
+- [Contributors](##Contributors)
 
-### 1. Implement micro-optimizations 
+## Milestones
+
+### 1. Implement micro-optimizations
 - [x] a. Implement a new data structure for inserting new data points.
 <p>: Initially, change the algorithm to just use <strong>realloc</strong> without using calloc or memcpy.</p>
 
@@ -376,7 +384,7 @@ ReadSet(const char *n, int column, const char *delim)
 <img src="/images/parallelized_log.png" width="70%" /> 
 
 
-### 3. Switch to a multi-threaded architecture 
+### 3. Switch to a multi-threaded architecture
 
 - We removed the mutex when adding the new miniset 
 
@@ -582,7 +590,7 @@ ReadSet(void *readset_context)
 	
 ```
 
-### 4. Implement parallel sorting and quicksort  
+### 4. Implement parallel sorting and quicksort
 - We used *dataset* instead of using miniset. 
 
 *After*:
