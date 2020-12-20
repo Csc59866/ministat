@@ -354,14 +354,14 @@ ReadSet(const char *n, int column, const char *delim)
 ```
 
 ### 2. Validate performance improvements and Visualizations
-- Original ministat vs. with-optimizations 1.a., 1.e., and 1.a.+ 1.e.
+- Original ministat vs. with-optimizations 1.a - 1.f
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_1.png" width="70%" />
 
 <p><strong> Logarithmic Scale </strong></p>
 <img src="/images/logarithmic_scale_1.png" width="70%" /> 
 
-- Original ministat vs. with parallel file reading and parsing (4 threads). 
+- Original ministat vs. with parallel file reading & parsing (4 threads) vs. with parallel file sorting
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_4_threads.png" width="70%" />
 
