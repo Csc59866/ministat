@@ -668,12 +668,21 @@ sys     0m0.356s
 
 - What were most beneficial optimizations?
 
+One of the biggest drops in timing data occured after we implemented optimization 1.d. Instead of strtod() for char to double conversion, we are using strtod_fast() found in the dtoa/ folder in this project, provided by https://github.com/achan001/dtoa-fast/blob/master/license.txt. 
+Another helpful optimzation was milstone 1.b. Switching qsort() for an_qsort(), provided by https://github.com/appnexus/acf/blob/master/LICENSE. 
+
+The most beneficial optimization come to utilizating threads and parallizing file reading. It significantly improved time (see visualization). 
+Adding parallelization to file sorting was added only a sligth improvement overall. 
+
 - What were least effective?
+
+The least effective was many of the micro-optimzations. There was a visible difference in timing data only when it came down to very large files.
 
 - What challenges you encountered?
 
-
-
+One challenge from the beginning was how to split the work up and collaborate on different schedules. In that regard, we all pulled through and supported one another. 
+Another challenge was making sure we all had the same data for testing so we were on the same page about whether our changes were true optimizations. 
+It could have helped if many of the faster functions (i.e. an_qsort and strtod_fast) had more documentation on the implementation in practice. 
 
 
 ## Contributors
