@@ -378,7 +378,7 @@ ReadSet(const char *n, int column, const char *delim)
 #### Data Specification
 We are testing three main components in these graphs below:
 - timing data on various test file sizes (lines) during different stages of micro-optimizations
-- timing data on various test file sizes (lines) during different stages of paralellizations
+- timing data on various test file sizes (lines) during different stages of parallelization
 - timing data on various test file arguments given to files from origin ministat.c to improved ministat.c
 
 Using a test files generator file, included in our report, we generated 11 files. Starting from the smallest file with 2^16 lines, it will generate up to the biggest file size, 2^26 lines.
@@ -400,7 +400,7 @@ __These numbers were executed with the *time utility* and using the following -q
 
 - Original ministat vs. with parallel file reading & parsing (4 threads) vs. with parallel file sorting
 
-*timing data on various test file sizes (lines) during different stages of paralellizations*
+*timing data on various test file sizes (lines) during different stages of parallelization*
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_4_threads.png" width="70%" />
 
@@ -444,7 +444,7 @@ ReadSetWorker(void *readsetworker_context)
 	..
 }
 
-Reastatic void *
+static void *
 ReadSetWorker(void *readsetworker_context)
 {
 	...
@@ -538,7 +538,7 @@ ReadSet(void *readset_context)
 
 }
 ```
-- Parallelize appending of miniset points in *ReadSet* instend of *ReadSetWorker*.
+- Parallelize appending of miniset points in *ReadSet* instead of *ReadSetWorker*.
 
 *Before*:
 
@@ -632,7 +632,7 @@ ReadSet(void *readset_context)
 struct dataset {
 	char *name;
 	double *points;
-	duboe sy, syy;
+	double sy, syy;
 	unsigned n;
 	struct arraylist *head, *tail;
 }
