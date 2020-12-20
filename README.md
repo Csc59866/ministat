@@ -361,7 +361,7 @@ ReadSet(const char *n, int column, const char *delim)
 }
 ```
 
-### 2. Validate performance improvements and Visualizations
+### Validate performance improvements and Visualizations
 - Original ministat vs. with-optimizations 1.a - 1.f
 <p><strong> Linear Scale </strong></p>
 <img src="/images/linear_scale_1.png" width="70%" />
@@ -384,7 +384,7 @@ ReadSet(const char *n, int column, const char *delim)
 <img src="/images/parallelized_log.png" width="70%" /> 
 
 
-### 3. Switch to a multi-threaded architecture
+### Switch to a multi-threaded architecture
 
 - We removed the mutex when adding the new miniset 
 
@@ -590,7 +590,7 @@ ReadSet(void *readset_context)
 	
 ```
 
-### 4. Implement parallel sorting and quicksort
+### Implement parallel sorting and quicksort
 - We used *dataset* instead of using miniset. 
 
 *After*:
@@ -621,7 +621,7 @@ Addpoint(struct dataset *ds, double a)
 ```
 
 
-### 5. Final Analysis
+### Final Analysis
 
 - Original 
 ```
