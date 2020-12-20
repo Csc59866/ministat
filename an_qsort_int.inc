@@ -60,11 +60,11 @@
 #endif
 
 #ifndef AN_QSORT_SUFFIX
-#define AN_QSORT_SUFFIX C
+#define AN_QSORT_SUFFIX D
 #endif
 
 #ifndef AN_QSORT_TYPE
-#define AN_QSORT_TYPE double
+#define AN_QSORT_TYPE long int
 #endif
 
 #ifndef AN_QSORT_CMP
