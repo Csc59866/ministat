@@ -1326,6 +1326,8 @@ sys     0m0.356s
 
 - What improved from the base line?
 
+Compared to the original ministat, this version uses parallel file reading, parsing, sorting, and other optimization techniques to improve performance by up to 80%.
+
 - What were most beneficial optimizations?
 
 One of the biggest drops in timing data ocurred after we implemented optimization 1.d. Instead of `strtod()` for char to double conversion, we are using `strtod_fast()` found in the `dtoa/` folder in this project, provided by <https://github.com/achan001/dtoa-fast/blob/master/license.txt>.
