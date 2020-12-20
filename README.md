@@ -576,9 +576,38 @@ ReadSet(void *readset_context)
 	
 ```
 
-### 4. Implement integer mode
+### 4. Implement parallel sorting and quicksort  
+- We used *dataset* instead of using miniset. 
 
-### 5. Validate performance improvements 
+*After*:
+
+```
+struct dataset {
+	char *name;
+	double *points;
+	duboe sy, syy;
+	unsigned n;
+	struct arraylist *head, *tail;
+}
+
+static void 
+Addpoint(struct dataset *ds, double a)
+{
+	 clock_gettime(CLOCK_MONOTONIC, &start); 
+	 if (ds->tail->n >= ARRAYLIST_SIZE) {
+	 	ds->tail = ds->tail->next = NewArrayList();
+	 }
+	 ds->tail->points[ds->tail->n++] = a;
+	 ds->sy += a;
+	 ds->syy += a * a;
+	 ds->n += 1;
+	 ....
+	
+}
+```
+
+
+### 5. Final Analysis
 
 - Original 
 ```
@@ -599,7 +628,7 @@ sys     0m0.356s
 ```
 ```
 
-### Final Analysis
+
 
 - What improved from the base line?
 
