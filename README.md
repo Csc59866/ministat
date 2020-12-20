@@ -1,6 +1,11 @@
 # ministat
 A small tool to do the statistics legwork on benchmarks etc. The goal is to optimize ministat to take advantage modern CPU features and compiler optimizations.
 
+## COMPILE
+
+In the folder of ministat.c, simply enter: ``` $ make ```
+The executable will be ./ministat found in the same folder. 
+
 ## Table of Contents
 - [Implement micro-optimzations](#implement-micro-optimizations)
 - [Validate performance improvements and Visualizations](#validate-performance-improvements-and-visualizations)
