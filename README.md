@@ -1303,23 +1303,35 @@ main(int argc, char **argv)
 
 ### Final Analysis
 
+Here is a runtime comparison between the original ministat and this version (4 threads) on two files with 2<sup>25</sup> and 2<sup>26</sup> floating-point numbers.
+
 - Original
+
 ```
-x game.txt
-+ desktop.txt
+x 2^25.txt
++ 2^26.txt
     N           Min           Max        Median           Avg        Stddev
-x 19992880             1 1.6039039e+09           868     166282.14      15806022
-+ 15863880             1 1.5813409e+09             4     76146.461     4043837.6
-Difference at 95.0% confidence
-        -90135.7 +/- 7977.54
-        -54.2065% +/- 4.79759%
-        (Student's t, pooled s = 1.21051e+07)
-real    0m12.140s
-user    0m11.783s
-sys     0m0.356s
+x 33554432 7.8160799e-05     9999.9998     4999.2247     4999.4024     2886.8753
++ 67108864 4.2555226e-06     9999.9998     4999.6792     5000.0635     2886.7593
+No difference proven at 95.0% confidence
+
+real    1m41.144s
+user    1m20.068s
+sys     0m1.963s
 ```
+
 - Final Result
 ```
+x 2^25.txt
++ 2^26.txt
+    N           Min           Max        Median           Avg        Stddev
+x 33554432 7.8160799e-05     9999.9998     4999.2247     4999.4024     2886.8753
++ 67108864 4.2555226e-06     9999.9998     4999.6792     5000.0635     2886.7593
+No difference proven at 95.0% confidence
+
+real    0m28.329s
+user    1m18.907s
+sys     0m12.999s
 ```
 
 
