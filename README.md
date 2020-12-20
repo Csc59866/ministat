@@ -5,15 +5,22 @@ A small tool to do the statistics legwork on benchmarks etc. The goal is to opti
 
 In the folder of ministat.c, simply enter: ``` $ make ```
 
-The executable will be ```./ministat``` found in the same folder. 
+The executable will be ```./ministat``` found in the same folder.
 
 ## Table of Contents
-- [Implement micro-optimzations](#implement-micro-optimizations)
-- [Validate performance improvements and Visualizations](#validate-performance-improvements-and-visualizations)
-- [Switch to a multi-threaded architecture](#switch-to-a-multi-threaded-architecture)
-- [Implement parallel sorting and quicksort ](#implement-parallel-sorting-and-quicksort)
-- [Final Analysis](#final-analysis)
-- [Contributors](#contributors)
+- [ministat](#ministat)
+	- [COMPILE](#compile)
+	- [Table of Contents](#table-of-contents)
+	- [Milestones](#milestones)
+		- [Implement micro-optimizations](#implement-micro-optimizations)
+		- [Validate performance improvements and Visualizations](#validate-performance-improvements-and-visualizations)
+			- [Data Specification](#data-specification)
+			- [Visualizations](#visualizations)
+		- [Switch to a multi-threaded architecture](#switch-to-a-multi-threaded-architecture)
+		- [Implement parallel sorting and quicksort](#implement-parallel-sorting-and-quicksort)
+		- [Implement integer mode](#implement-integer-mode)
+		- [Final Analysis](#final-analysis)
+	- [Contributors](#contributors)
 
 ## Milestones
 
@@ -22,7 +29,7 @@ The executable will be ```./ministat``` found in the same folder.
 <p>: Initially, change the algorithm to just use <strong>realloc</strong> without using calloc or memcpy.</p>
 
 *Before*:
-```
+```c
 static void
 AddPoint(struct dataset *ds, double a)
 {
@@ -42,7 +49,7 @@ AddPoint(struct dataset *ds, double a)
 ```
 
 *After*:
-```
+```c
 static void
 AddPoint(struct dataset *ds, double a)
 {
@@ -62,7 +69,7 @@ AddPoint(struct dataset *ds, double a)
 
 *Before*:
 
-```
+```c
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
@@ -76,13 +83,13 @@ ReadSet(const char *n, int column, const char *delim)
 
 *After*:
 
-```
+```c
 static void *
 ReadSet(void *readset_context)
 {
 	...
 	......
-	
+
 	s->points = malloc(s->n * sizeof *s->points);
 	double *sp = s->points;
 
@@ -91,9 +98,9 @@ ReadSet(void *readset_context)
 	}
 
 	an_qsort_C(s->points, s->n);
-	
+
 	...
-}	
+}
 ```
 
 - [x] c. Implement a new option '-v' that emits verbose timing data.
@@ -101,7 +108,7 @@ ReadSet(void *readset_context)
 
 *After*:
 
-```
+```c
 #include <time.h>
 ...
 static void *
@@ -111,7 +118,7 @@ ReadSet(void *readset_context)
 	....
 	..
 	clock_gettime(CLOCK_MONOTONIC, &stop);
-	...	
+	...
 }
 
 ```
@@ -121,7 +128,7 @@ ReadSet(void *readset_context)
 
 *Before*:
 
-```
+```c
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
@@ -132,7 +139,7 @@ ReadSet(const char *n, int column, const char *delim)
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
-			
+
 }
 
 int
@@ -150,7 +157,7 @@ main(int argc, char **argv)
 
 *After*:
 
-```
+```c
 	d = strtod_fast(t, &p);
 	if (strcspn(p, context->file->delim))
 		err(2, "Invalid data on line %d in %s\n", line, context->file->n);
@@ -163,7 +170,7 @@ main(int argc, char **argv)
 
 *After*:
 
-```
+```c
 // requires #include <fcntl.h>
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
@@ -176,7 +183,7 @@ ReadSet(const char *n, int column, const char *delim)
    int i;
    int bytes_read;
    size_t offset = 0;
- 
+
    if (n == NULL) {
        f = STDIN_FILENO;
        n = "<stdin>";
@@ -193,15 +200,15 @@ ReadSet(const char *n, int column, const char *delim)
    line = 0;
    for (;;) {
        bytes_read = read(f, buf, sizeof buf - 1);
- 
+
        if (bytes_read <= 0) {
            break;
        }
- 
+
        buf[bytes_read] = '\0';
        char *c = buf;
        char *str_start = c;
- 
+
        for (; *c != '\0'; ++c) {
            if (*c == '\n') {
                line++;
@@ -209,7 +216,7 @@ ReadSet(const char *n, int column, const char *delim)
                strcpy(str + offset, str_start);
                offset = 0;
                i = strlen(str);
- 
+
                for (i = 1, t = strtok(str, delim);
                    t != NULL && *t != '#';
                    i++, t = strtok(NULL, delim)) {
@@ -218,17 +225,17 @@ ReadSet(const char *n, int column, const char *delim)
                }
                if (t == NULL || *t == '#')
                    continue;
- 
+
                d = strtod(t, &p);
                if (p != NULL && *p != '\0')
                    err(2, "Invalid data on line %d in %s\n", line, n);
                if (*str != '\0')
                    AddPoint(s, d);
- 
+
                str_start = c + 1;
            }
        }
- 
+
        if (buf[bytes_read - 1] != '\0') {
            strcpy(str, str_start);
            offset = strlen(str);
@@ -244,7 +251,7 @@ ReadSet(const char *n, int column, const char *delim)
 
 *Before*:
 
-```
+```c
 static void *
 ReadSet(const char *n, int column, const char *delim)
 {
@@ -260,7 +267,7 @@ ReadSet(const char *n, int column, const char *delim)
 	strcpy(str + offset, str_start);
 	offset = 0;
 	i = strlen(str);
-	
+
 	for (i = 1, t = strtok(str, delim);
 		t != NULL && *t != '#';
 		i++, t = strtok(NULL, delim)) {
@@ -269,21 +276,21 @@ ReadSet(const char *n, int column, const char *delim)
 	}
 	....
 	err(2, "Invalid data on line %d in %s\n", line, n);
-	
+
 	if (*str != '\0')
 		AddPoint(s, d);
-	
+
 	str_start = c + 1;
     }
 	.....
-	
+
 }
 
 ```
 
 *After(strtok() -> strsep())*:
 
-```
+```c
 static void *
 ReadSet(const char *n, int column, const char *delim)
 {
@@ -300,7 +307,7 @@ ReadSet(const char *n, int column, const char *delim)
 	offset = 0;
 	str_start = c + 1;
 	str_0 = str;
-	
+
 	for (i = 1, t = strsep(&str_0, delim);
 		t != NULL && *t != '#';
 		i++, t = strsep(&str_0, delim)) {
@@ -309,23 +316,23 @@ ReadSet(const char *n, int column, const char *delim)
 	}
 	if (t == NULL || *t == '#')
 		continue;
-	
+
 	d = strtod_fast(t, &p);
 	if (p != NULL && *p != '\0')
 		err(2, "Invalid data on line %d in %s\n", line, n);
-	
+
 	if (*str != '\0')
 		AddPoint(s, d);
 
     }
 	.....
-	
+
 }
 ```
 
 *After(strsep() -> strcspn())*:
 
-```
+```c
 static void *
 ReadSet(const char *n, int column, const char *delim)
 {
@@ -342,7 +349,7 @@ ReadSet(const char *n, int column, const char *delim)
 	offset = 0;
 	str_start = c + 1;
 	str_0 = str;
-	
+
 	for(i = 1, t = p = str; *t != '#'; i++){
 		t = p;
 		p += strcspn(p, delim);
@@ -353,17 +360,17 @@ ReadSet(const char *n, int column, const char *delim)
 	}
 	if (t == p || *t == '#')
 		continue;
-		
+
 	d = strtod_fast(t, &p);
 	if (strcspn(p, delim))
 		err(2, "Invalid data on line %d in %s\n", line, n);
-	
+
 	if (*str != '\0')
 		AddPoint(s, d);
 
     }
 	.....
-	
+
 }
 ```
 
@@ -389,7 +396,7 @@ __These numbers were executed with the *time utility* and using the following -q
 <img src="/images/linear_scale_1.png" width="70%" />
 
 <p><strong> Logarithmic Scale </strong></p>
-<img src="/images/logarithmic_scale_1.png" width="70%" /> 
+<img src="/images/logarithmic_scale_1.png" width="70%" />
 
 - Original ministat vs. with parallel file reading & parsing (4 threads) vs. with parallel file sorting
 
@@ -398,7 +405,7 @@ __These numbers were executed with the *time utility* and using the following -q
 <img src="/images/linear_scale_4_threads.png" width="70%" />
 
 <p><strong> Logarithmic Scale </strong></p>
-<img src="/images/logarithmic_scale_4_threads.png" width="70%" /> 
+<img src="/images/logarithmic_scale_4_threads.png" width="70%" />
 
 - Timing data of original ministat vs. parallelized ministat
 
@@ -407,12 +414,12 @@ __These numbers were executed with the *time utility* and using the following -q
 <img src="/images/parallelized_linear.png" width="70%" />
 
 <p><strong> Logarithmic Scale </strong></p>
-<img src="/images/parallelized_log.png" width="70%" /> 
+<img src="/images/parallelized_log.png" width="70%" />
 
 
 ### Switch to a multi-threaded architecture
 
-- We removed the mutex when adding the new miniset 
+- We removed the mutex when adding the new miniset
 
 *Before*:
 
@@ -423,18 +430,18 @@ struct readsetworker_context {
 	struct dataset *s;
 };
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;	
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void *	
-ReadSetWorker(void *readsetworker_context)	
-{	
-	struct readsetworker_context *context = readsetworker_context;		
-	struct miniset *ms = NewMiniSet();		
-	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;		
+static void *
+ReadSetWorker(void *readsetworker_context)
+{
+	struct readsetworker_context *context = readsetworker_context;
+	struct miniset *ms = NewMiniSet();
+	char buf[BUFSIZ], str[BUFSIZ + 25], *p, *t;
 	double d;		double d;
 	int line = 0;
 	....
-	..		
+	..
 }
 
 Reastatic void *
@@ -442,9 +449,9 @@ ReadSetWorker(void *readsetworker_context)
 {
 	...
 	....
-	pthread_mutex_lock(&mutex);	
-	AddMiniSet(context->s, ms);	
-	pthread_mutex_unlock(&mutex);	
+	pthread_mutex_lock(&mutex);
+	AddMiniSet(context->s, ms);
+	pthread_mutex_unlock(&mutex);
 
 	return NULL;
 }
@@ -454,19 +461,19 @@ ReadSet(void *readset_context)
 {
 	ctx_start = 0;
 	ctx_end = share;
-	
+
 	pthread_t threads[READSET_THREAD_COUNT];
 	pthread_t *t = threads;
 	size_t thread_count = 0;
 	.....
 	...
-	
+
 	struct readsetworker_context *worker_context = malloc(sizeof *worker_context);
-	
+
 	...
 	.....
 	if (pthread_join(*t++, NULL) != 0) {
-			err(1, "Failed to join a ReadSetWorker thread");				
+			err(1, "Failed to join a ReadSetWorker thread");
 	}
     }
     close(f);
@@ -483,24 +490,24 @@ struct readsetworker_context {
 	struct miniset *m;
 };
 
-static void *	
-ReadSetWorker(void *readsetworker_context)	
-{	
-	struct readsetworker_context *context = readsetworker_context;		
-	struct miniset *ms = context->m = NewMiniSet();		
-	
+static void *
+ReadSetWorker(void *readsetworker_context)
+{
+	struct readsetworker_context *context = readsetworker_context;
+	struct miniset *ms = context->m = NewMiniSet();
+
 	....
-	..		
+	..
 }
 
-Reastatic void *
+static void *
 ReadSetWorker(void *readsetworker_context)
 {
 	...
 	....
-	pthread_mutex_lock(&mutex);	
-	AddMiniSet(context->s, ms);	
-	pthread_mutex_unlock(&mutex);	
+	pthread_mutex_lock(&mutex);
+	AddMiniSet(context->s, ms);
+	pthread_mutex_unlock(&mutex);
 
 	return NULL;
 }
@@ -510,20 +517,20 @@ ReadSet(void *readset_context)
 {
 	ctx_start = 0;
 	ctx_end = share;
-	
+
 	struct readsetworker_context *workers[READSET_THREAD_COUNT];
 	pthread_t threads[READSET_THREAD_COUNT];
 	pthread_t *t = threads;
 	.....
 	...
-	
+
 	struct readsetworker_context *worker_context = workers[i] = malloc(sizeof *worker_context);
-	
+
 	...
 	.....
 	if (pthread_join(*t++, NULL) != 0) {
-			err(1, "Failed to join a ReadSetWorker thread");				
-	}			
+			err(1, "Failed to join a ReadSetWorker thread");
+	}
 
 	AddMiniSet(s, workers[i]->m);
     }
@@ -552,21 +559,21 @@ ReadSetWorker(void *readsetworker_context)
 	double d;
 	int line = 0;
 	....
-	
+
 	return NULL;
 }
 
 static void *
 ReadSet(void *readset_context)
 {
-   ... 
-   double *sp = s->points;		
-   
-   for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {		
-	for (struct arraylist *al = ms->head; al != NULL; al = al->next) {			
-		memcpy(sp, al->points, al->n * sizeof *sp);	
-		sp += al->n;	
-	}	
+   ...
+   double *sp = s->points;
+
+   for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
+	for (struct arraylist *al = ms->head; al != NULL; al = al->next) {
+		memcpy(sp, al->points, al->n * sizeof *sp);
+		sp += al->n;
+	}
   }
   ..
   ....
@@ -598,26 +605,26 @@ ReadSetWorker(void *readsetworker_context)
 		memcpy(points, al->points, al->n * sizeof *points);
 		points += al->n;
 	}
-	
+
 	return NULL;
 }
 
 static void *
 ReadSet(void *readset_context)
 {
-   ... 
-   double *sp = s->points;		
-   
+   ...
+   double *sp = s->points;
+
    for (struct miniset *ms = s->head; ms != NULL; ms = ms->next) {
 		memcpy(sp, ms->points, ms->n * sizeof *sp);
    }
   ..
   ....
-	
+
 ```
 
 ### Implement parallel sorting and quicksort
-- We used *dataset* instead of using miniset. 
+- We used *dataset* instead of using miniset.
 
 *After*:
 
@@ -630,10 +637,10 @@ struct dataset {
 	struct arraylist *head, *tail;
 }
 
-static void 
+static void
 Addpoint(struct dataset *ds, double a)
 {
-	 clock_gettime(CLOCK_MONOTONIC, &start); 
+	 clock_gettime(CLOCK_MONOTONIC, &start);
 	 if (ds->tail->n >= ARRAYLIST_SIZE) {
 	 	ds->tail = ds->tail->next = NewArrayList();
 	 }
@@ -642,7 +649,7 @@ Addpoint(struct dataset *ds, double a)
 	 ds->syy += a * a;
 	 ds->n += 1;
 	 ....
-	
+
 }
 ```
 
@@ -763,7 +770,7 @@ Stddev_Int(struct dataset_int *ds)
 static void
 Vitals(struct dataset *ds, long int flag)
 {
- .... 
+ ....
 }
 
 static void
@@ -1155,30 +1162,30 @@ int
 main(int argc, char **argv)
 {
 
-  ... 
+  ...
   struct dataset_int *ds_int[7];
   ...
   ....
   int flag_i = 0;
-  
+
   ...
   while ((c = getopt(argc, argv, "C:c:d:snqiw:v")) != -1)
   ...
-  .... 
+  ....
   case 'i':
 	flag_i = 1;
 	break;
-  
+
   ...
   ......
-  
+
   if (flag_i) {
 			struct readset_context_int context_int;
 			context_int.multiset = ds_int;
 			context_int.index = 0;
 			context_int.n = "-";
 			context_int.column = column;
-			
+
 
 
 			ReadSet_Int((void *)&context_int);
@@ -1193,9 +1200,9 @@ main(int argc, char **argv)
 
 			ReadSet((void *)&context);
 		}
-		
+
 	....
-	
+
 	for (i = 0; i < nds; i++) {
 		if (flag_i) {
 			struct readset_context_int *context_int = malloc(sizeof *context_int);
@@ -1204,7 +1211,7 @@ main(int argc, char **argv)
 			context_int->n = argv[i];
 			context_int->column = column;
 			context_int->delim = delim;
-			
+
 			if (pthread_create(t++, NULL, ReadSet_Int, context_int) != 0) {
 					err(1, "Failed to create a ReadSet_Int thread");
 				}
@@ -1238,7 +1245,7 @@ main(int argc, char **argv)
 			printf("%c %s\n", symbol[i+1], ds[i]->name);
 		}
 	}
-	
+
 	if (!flag_n && !flag_q) {
 		SetupPlot(termwidth, flag_s, nds);
 		for (i = 0; i < nds; i++) {
@@ -1258,37 +1265,37 @@ main(int argc, char **argv)
 				PlotSet(ds[i], i + 1);
 			}
 		}
-		
+
 		DumpPlot();
 	}
-	
+
 	VitalsHead();
-	
+
 	if (flag_i) {
 		Vitals_Int(ds_int[0], 1);
 	}
 	else {
 		Vitals(ds[0], 1);
 	}
-	
+
 	for (i = 1; i < nds; i++) {
 		if (flag_i) {
 			Vitals_Int(ds_int[i], i + 1);
-			
+
 			if(!flag_n)
 				Relative_Int(ds_int[i], ds_int[0], ci);
 		}
 		else {
 			Vitals(ds[i], i + 1);
-			
+
 			if (!flag_n)
 				Relative(ds[i], ds[0], ci);
 		}
 	}
-				
+
 	......
 	...
-  
+
 }
 ```
 
@@ -1296,7 +1303,7 @@ main(int argc, char **argv)
 
 ### Final Analysis
 
-- Original 
+- Original
 ```
 x game.txt
 + desktop.txt
@@ -1321,28 +1328,30 @@ sys     0m0.356s
 
 - What were most beneficial optimizations?
 
-One of the biggest drops in timing data occured after we implemented optimization 1.d. Instead of strtod() for char to double conversion, we are using strtod_fast() found in the dtoa/ folder in this project, provided by https://github.com/achan001/dtoa-fast/blob/master/license.txt. 
-Another helpful optimzation was milstone 1.b. Switching qsort() for an_qsort(), provided by https://github.com/appnexus/acf/blob/master/LICENSE. 
+One of the biggest drops in timing data ocurred after we implemented optimization 1.d. Instead of `strtod()` for char to double conversion, we are using `strtod_fast()` found in the `dtoa/` folder in this project, provided by <https://github.com/achan001/dtoa-fast/blob/master/license.txt>.
+Another helpful optimization was milestone 1.b. Switching `qsort()` for `an_qsort()`, provided by <https://github.com/appnexus/acf/blob/master/LICENSE>.
 
-The most beneficial optimization come to utilizating threads and parallizing file reading. It significantly improved time (see visualization). 
-Adding parallelization to file sorting was added only a sligth improvement overall. 
+The most beneficial optimization came from using threads to parallelize file reading and parsing. It significantly improved performance (see visualization).
+
+Parallelizing input sorting only added slight improvement to overall performance.
 
 - What were least effective?
 
-The least effective was many of the micro-optimzations. There was a visible difference in timing data only when it came down to very large files.
+The least effective was many of the micro-optimizations. There was a visible difference in timing data only when it came down to very large files.
 
 - What challenges you encountered?
 
-One challenge from the beginning was how to split the work up and collaborate on different schedules. In that regard, we all pulled through and supported one another. 
-Another challenge was making sure we all had the same data for testing so we were on the same page about whether our changes were true optimizations. 
-It could have helped if many of the faster functions (i.e. an_qsort and strtod_fast) had more documentation on the implementation in practice. 
+One challenge from the beginning was how to split the work up and collaborate on different schedules. In that regard, we all pulled through and supported one another.
 
+Another challenge was making sure we all had the same data for testing so we were on the same page about whether our changes were true optimizations.
+
+It could have helped if many of the faster functions (i.e. an_qsort and strtod_fast) had more documentation on the implementation in practice.
 
 ## Contributors
 
-| Name          | Github        | 
-| ------------- | ------------- | 
-| Kangming Deng | <a href="https://github.com/Kamide">@Kamide</a>  | 
-| Leah Meza | <a href="https://github.com/leahmezacs">@leahmezacs</a>  |
-| Jonathan So | <a href="https://github.com/Jonathan668">@Jonathan668</a>  |	
-| Jiseon Yu | <a href="https://github.com/JiseonYu">@JiseonYu</a> | 
+| Name          | Github                                                    |
+| ------------- | --------------------------------------------------------- |
+| Kangming Deng | <a href="https://github.com/Kamide">@Kamide</a>           |
+| Leah Meza     | <a href="https://github.com/leahmezacs">@leahmezacs</a>   |
+| Jonathan So   | <a href="https://github.com/Jonathan668">@Jonathan668</a> |
+| Jiseon Yu     | <a href="https://github.com/JiseonYu">@JiseonYu</a>       |
